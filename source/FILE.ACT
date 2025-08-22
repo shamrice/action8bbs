@@ -1,0 +1,16 @@
+
+
+PROC AppendFile(BYTE ARRAY file, BYTE ARRAY txt, BYTE len)
+
+  OPEN(FIOCB,file,9,0)
+  FOR i = 0 TO len
+  DO
+    PutD(FIOCB,txt(i))
+  OD
+  PutD(FIOCB,155)
+
+  Close(FIOCB)
+    
+RETURN
+  
+

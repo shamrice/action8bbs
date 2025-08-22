@@ -1,0 +1,331 @@
+MODULE
+
+BYTE MO=[0]
+BYTE HIMSGID=[0]
+BYTE MBROLL=[0]
+
+CARD MS=[0]
+
+BYTE ARRAY MBFNAME(0)="D2:MSGBASE.DAT"
+BYTE ARRAY MIFNAME(0)="D2:MSGBASE.IDX"
+BYTE ARRAY MHFNAME(0)="D2:MSGHI.DAT"
+                    
+PROC SetHIMSG()
+  Open(6,MHFNAME,4,0)
+  HIMSGID = InputBD(6)
+  MBROLL = InputBD(6)
+  Close(6)
+RETURN
+            
+
+PROC SetMsgCoords(BYTE id)
+
+  BYTE l=[0]
+  l=0
+  MS=0
+  MO=0
+
+  Close(6)
+  Open(6,MIFNAME,4,0)
+
+  WHILE EOF(6) = 0
+  DO
+    MS = InputCD(6)
+    MO = InputBD(6)
+
+    IF l = id THEN
+      EXIT
+    FI
+    l==+1
+  OD
+  
+  Close(6)
+;  PrintF("ID=%B MS=%U MO=%B%E",id,MS,MO)
+RETURN
+
+
+
+PROC ViewMsg(BYTE id)
+      
+  BYTE c=[0]
+
+  SetMsgCoords(id)
+
+  PrintF("View ID: %B%E",id)
+  
+  c=0
+  i=0
+      
+  Close(5)
+  Open(5,MBFNAME,12,0)
+  Point(5,MS,MO)
+
+  NPutC(125)
+
+  IF MBROLL = 1 THEN
+    IF HIMSGID > id THEN
+      id = 50 - (HIMSGID - id)
+    ELSE
+      id = id - HIMSGID
+    FI       
+  FI
+
+  IF id = 0 THEN
+    id = 50
+  FI
+
+  NWriteS("  ID: ")
+  StrB(id,RXBUFF)
+  NWriteS(RXBUFF)
+    
+  IF MBROLL = 1 THEN
+    NWriteSE("/50+")
+  ELSE              
+    NPutC('/)
+    StrB(HIMSGID,RXBUFF)
+    NWriteSE(RXBUFF)
+  FI
+
+  WHILE EOF(5) = 0
+  DO
+    c = GetD(5)
+    IF c = 158 THEN
+      EXIT
+    FI
+    
+    RXBUFF(i) = c
+    i==+1
+
+    IF i > 38 THEN
+      NWrite(RXBUFF,i)
+      i = 0
+    FI
+  OD
+  NWrite(RXBUFF,i)
+
+  Close(5)
+
+RETURN
+
+             
+
+PROC PostMsg()
+
+  BYTE s=[0],id=[0],d=[0],nMsg=[0],j=[0]
+
+  s=0
+  d=0
+
+  nMsg = HIMSGID + 1
+  IF nMsg > 49 THEN
+    nMsg = 0
+    MBROLL = 1
+  FI
+
+  SetMsgCoords(nMsg)
+
+  Close(5)
+  Open(5,MBFNAME,12,0)
+  Point(5,MS,MO)
+
+  PrintD(5, "DATE:")
+  NGetDT()
+  FOR i = 0 TO 16
+  DO
+    PutD(5, RXBUFF(i))
+  OD              
+  PutD(5, 155)
+
+  PrintD(5, "FROM: ")
+
+  FOR i = 0 TO 9
+  DO
+    PutD(5, UNAME(i))
+  OD
+  PutD(5,155)
+                 
+  NPutC(125)
+                
+  SCopy(RXBUFF, "  TO: ")
+  NWriteS(RXBUFF)
+  PrintD(5, RXBUFF)
+
+  GetInp()  
+
+  IF RXBUFF(0) = 32 THEN
+    PrintDE(5, "ALL")
+
+  ELSE
+    FOR i = 0 TO 29       
+    DO          
+      c = UCase(RXBUFF(i))   
+      PutD(5, c)
+    OD
+    PutD(5, 155)
+  FI      
+
+  SCopy(RXBUFF, "SUBJ: ")  
+  NWriteS(RXBUFF)
+  PrintD(5,RXBUFF)
+
+  GetInp()
+
+  FOR i = 0 TO 29       
+  DO            
+    PutD(5, RXBUFF(i))
+  OD
+  PutD(5,155)
+
+  SCopy(RXBUFF, "----+----")
+  FOR i = 0 TO 2
+  DO
+    NWriteS(RXBUFF)
+  OD
+  NWriteSE("----+---")
+
+  j = 0
+  WHILE d = 0
+  DO
+    
+    GetInp()
+
+    FOR i = 0 TO 38
+    DO  
+      c = RXBUFF(i)
+   
+      IF i = 0 AND c = '/ THEN
+
+        IF RXBUFF(1) = 's THEN
+          d = 1
+          s = 1
+          NWriteSE("Saving post!")
+          EXIT
+
+        ELSEIF RXBUFF(1) = 'a THEN
+          d = 1                 
+          s = 0
+          EXIT
+
+        ELSEIF RXBUFF(1) = '? THEN
+          NWriteSE("/a - abort post")
+          NWriteSE("/s - save post")
+          
+        ELSE
+          NWriteSE("Type /? for help")
+        FI                          
+
+      ELSEIF j <= 20 THEN      
+        PutD(5, c)
+      FI
+    OD
+ 
+    IF d = 0 AND j >= 20 THEN
+      NWriteSE("Max msg lines reached!")
+    ELSE
+      PutD(5, 155)
+      j==+1
+    FI
+
+  OD
+  PrintDE(5,"_______________________________________")
+  PrintDE(5," Next Msg   Jump   Reply   Exit")
+  PutD(5,155)
+
+                   
+  IF s = 1 THEN
+    PutD(5,158) 
+
+    HIMSGID = nMsg
+    NWriteSE("Message posted")
+          
+    Close(6)
+    Open(6,MHFNAME,8,0)
+    PrintBDE(6,HIMSGID)
+    PrintBDE(6,MBROLL)
+    Close(6)
+  ELSE
+    NWriteSE("Message cancelled")
+  FI
+
+  Close(5)
+
+RETURN
+
+
+PROC ReadMsgs()
+      
+  BYTE n=[0]
+  n=HIMSGID        
+              
+  NPutC(125)
+
+  DO           
+    ViewMsg(n)
+
+    NWriteS("MSGS> ")
+    c = NGetB()
+    c = UCase(c)
+
+    IF c = 'N OR c = 32 OR c = 123 THEN
+      IF n = 0 THEN
+        n = 49
+      ELSE
+        n==-1
+      FI
+      IF MBROLL = 0 AND n = 0 THEN
+        n = 1
+      FI 
+
+    ELSEIF c = 'J THEN
+      NPutC(155)
+      NWriteS("TO MSG ID: ")
+      GetInp()
+      
+      IF RXBUFF(1) = 32 OR RXBUFF(1) = 155 THEN
+        n = RXBUFF(0) - 48
+      ELSE 
+        c = (RXBUFF(0) - 48) * 10
+        n = (RXBUFF(1) - 48) + c
+      FI
+
+      IF n > 50 THEN
+        NWriteSE("ERROR: ID must be <= 50!")
+        TSleep(20)
+        n = HIMSGID
+      ELSE
+        IF MBROLL = 1 THEN
+       ;   IF HIMSGID > n THEN
+       ;     c = (n + HIMSGID) - 50
+       ;   ELSE                   
+       ;     c = n + HIMSGID
+       ;   FI
+
+          c = n + HIMSGID
+          IF HIMSGID > n THEN
+            c==-256
+          FI
+          n = c
+        ELSE
+          IF n > HIMSGID THEN
+            n = HIMSGID
+          ELSEIF n = 0 THEN
+            n = 1
+          FI
+        FI  
+        IF n >= 50 THEN
+          n==-50
+        FI        
+      FI
+
+    ELSEIF c = 'R THEN
+      PostMsg()
+
+    ELSEIF c = 'X THEN
+      EXIT
+    FI
+  OD
+
+  NPutC(155)
+
+RETURN
+

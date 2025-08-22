@@ -1,0 +1,257 @@
+MODULE 
+
+DEFINE NDEV = "$71"
+
+DEFINE DVSTATADDR="$02EA"
+BYTE ERRNO=[0],IS_CONN=[0]
+BYTE BYTESREAD=[0]
+BYTE ARRAY RXBUFF(40)
+
+CARD BYTESWAITING=$02EA
+
+CARD VPRCEDSAVE=[0]
+CARD VPRCED = $0202
+BYTE PACTL = $D302
+BYTE TRIP
+
+BYTE DVSTAT = $02EA
+BYTE EXTERR = $02ED
+
+BYTE DDEVIC = $0300
+BYTE DUNIT  = $0301
+BYTE DCOMND = $0302
+BYTE DSTATS = $0303
+CARD DBUF   = $0304
+BYTE DTIMLO = $0306
+BYTE DUNUSE = $0307
+CARD DBYT   = $0308
+CARD DAUX   = $030A
+BYTE DAUX1  = $030A
+BYTE DAUX2  = $030B
+
+BYTE ARRAY NSB(40)
+
+PROC nIntHandler=*()
+[$A9$01$8D TRIP $68$40]
+
+
+PROC NProc(BYTE s)
+  IF s = 1 THEN
+    TRIP = 0
+    VPRCEDSAVE = VPRCED
+    VPRCED = nIntHandler  
+    PACTL = PACTL % 1
+  ELSE
+    TRIP = 0
+    VPRCED = VPRCEDSAVE
+  FI
+
+RETURN
+
+
+
+PROC siov=$E459()
+                                  
+
+
+BYTE FUNC NStatus()
+  DDEVIC = NDEV
+  DUNIT  = 1
+  DCOMND = 'S
+  DSTATS = $40
+  DBUF   = DVSTATADDR
+  DTIMLO = $1F
+  DBYT   = 4
+  DAUX   = 0
+  siov()
+RETURN (EXTERR)
+
+
+BYTE FUNC NGetError()
+  IF DSTATS = 144 THEN
+    nstatus()
+    ERRNO = EXTERR
+  ELSE
+    ERRNO = DSTATS
+  FI
+RETURN (ERRNO)
+
+
+BYTE FUNC NOpen()
+  BYTE ARRAY ds(255)
+  FOR i = 0 TO 254
+  DO
+    ds(i) = 0
+  OD
+  SCopy(ds,"N:TCP://:6502")
+  DDEVIC = NDEV
+  DUNIT  = 1
+  DCOMND = 'O
+  DSTATS = $80
+  DBUF   = ds ;"N:TCP://:6502"
+  DTIMLO = $1F
+  DBYT   = 256
+  DAUX1  = 12
+  DAUX2  = 0
+  siov()            
+  IF DSTATS = 1 THEN
+    NProc(1)
+  ELSE
+    PrintF("NOPEN_ERR:%B%E",DSTATS)
+  FI
+RETURN (NGetError())
+
+
+BYTE FUNC NCmd(BYTE cmd)
+  DDEVIC = NDEV
+  DUNIT  = 1
+  DCOMND = cmd
+  DSTATS = $00
+  DBUF   = 0
+  DTIMLO = $0F
+  DBYT   = 0
+  DAUX   = 0
+  siov()
+  IF cmd = 'C THEN
+   NProc(0)
+  FI
+RETURN (NGetError())
+
+
+BYTE FUNC NRead(BYTE ARRAY buf, CARD len)
+  DDEVIC = NDEV
+  DUNIT  = 1
+  DCOMND = 'R
+  DSTATS = $40
+  DBUF   = buf
+  DTIMLO = $1F
+  DBYT   = len
+  DAUX   = len
+  siov()            
+RETURN (NGetError())
+            
+
+BYTE FUNC NWrite(BYTE ARRAY buf, CARD len)
+  DDEVIC = NDEV
+  DUNIT  = 1
+  DCOMND = 'W
+  DSTATS = $80
+  DBUF   = buf
+  DTIMLO = $1F
+  DBYT   = len
+  DAUX   = len
+  siov()            
+RETURN (NGetError())
+
+
+BYTE FUNC NPutC(BYTE b)
+  NSB(0) = b
+  ERRNO = NWrite(NSB, 1)
+RETURN (ERRNO)
+
+
+BYTE FUNC NWriteS(BYTE ARRAY str)
+  CARD l=[0]
+  l = str(0)
+  IF l > 39 THEN
+    l = 39
+  FI  
+  FOR c = 1 TO l
+  DO
+    NSB(c-1) = str(c)
+  OD
+  ERRNO = NWrite(NSB, l)
+RETURN (ERRNO)
+
+
+BYTE FUNC NWriteSE(BYTE ARRAY s)
+  ERRNO = NWriteS(s)
+  IF ERRNO <> 1 THEN
+    RETURN (ERRNO)
+  FI
+  ERRNO = NPutC(155)
+RETURN (ERRNO)
+
+
+
+BYTE FUNC NGetB()
+  v = 0           
+  c = 0
+  WHILE v = 0
+  DO    
+    NStatus()
+    IF BYTESWAITING > 0 THEN
+      ERRNO = NRead(RXBUFF, 1)
+      IF ERRNO <> 1 THEN
+        PrintF("Read err: %B%E",ERRNO)
+        IS_CONN = 0
+        RETURN(c)
+      FI                     
+      c = RXBUFF(0)    
+      TRIP = 0
+      PACTL = PACTL % 1
+      V = 1
+    ELSE
+      TSleep(10)
+    FI
+  OD
+RETURN (c)
+
+
+BYTE FUNC NGetDT()    
+  BYTE ARRAY t(3)
+  BYTE ch=[0]
+            
+  FOR i = 0 TO 6
+  DO             
+    NSB(i) = 0
+  OD
+
+  DDEVIC = $45
+  DUNIT  = 1
+  DCOMND = $93
+  DSTATS = 64;$40
+  DBUF   = NSB
+  DTIMLO = $1F
+  DBYT   = 6
+  DAUX1  = 0;$EE
+  DAUX2  = 0;$A0
+  siov()      
+           
+  SCopy(RXBUFF,"00/00/2025 00:00 ")
+
+  ch = 0
+  StrB(NSB(1), t)
+  IF NSB(1) < 10 THEN
+   ch = 1
+  FI
+  SAssign(RXBUFF,t,1+ch,2)
+                    
+  ch=0
+  StrB(NSB(0), t)        
+  IF NSB(0) < 10 THEN
+   ch=1
+  FI                
+  SAssign(RXBUFF,t,4+ch,5)
+
+  StrB(NSB(2), t)
+  SAssign(RXBUFF,t,9,10)
+
+  ch=0
+  StrB(NSB(3), t)
+  IF NSB(3) < 10 THEN
+    ch=1
+  FI
+  SAssign(RXBUFF,t,12+ch,13)
+
+  ch=0
+  StrB(NSB(4), t)
+  IF NSB(4) < 10 THEN
+    ch=1
+  FI  
+                          
+  SAssign(RXBUFF,t,15+ch,16)
+  RXBUFF(0) = 32
+RETURN (NGetError())
+
+

@@ -1,0 +1,474 @@
+;
+; Action! BBS
+;
+; Start Date: 2025-07-11
+; Last update: 2025-08-22
+;
+
+; Keep certain DOS from loading
+; program twice.
+BYTE RTS = [$60]
+
+; Only needed for standalone bin
+;INCLUDE "D3:SYS.ACT"
+
+INCLUDE "D3:TIME.ACT"
+
+MODULE
+
+DEFINE FIOCB="6"
+BYTE IMASK=[0]
+BYTE c=[0],i=[0],v=[0]
+                             
+INCLUDE "D3:NETWORK.ACT"
+INCLUDE "D3:ACCT1.ACT"
+INCLUDE "D3:FILE.ACT"
+      
+
+PROC GetInp()
+
+  BYTE ARRAY temp(40)
+  CARD readLen=[0] 
+
+  readLen = 0
+  c = 0
+
+  FOR i = 0 TO 39
+  DO
+    RXBUFF(i) = 32
+    temp(i) = 32
+  OD
+
+  DO
+    NStatus()
+
+    IF TRIP <> 0 AND BYTESWAITING > 0 THEN
+
+      IF BYTESWAITING > 39 THEN
+        BYTESWAITING = 39
+      ELSE
+        readLen = BYTESWAITING
+      FI
+
+      ERRNO = NRead(temp,readLen)
+
+      IF ERRNO <> 1 THEN
+        PrintF("RERR: %B%E",ERRNO)
+        RETURN
+      FI
+
+      TRIP = 0
+      PACTL = PACTL % 1
+ 
+      FOR i = 0 TO readLen - 1
+      DO
+        IF temp(i) = 155 THEN
+          NputC(155)
+          RETURN
+        ELSEIF temp(i) = 126 THEN
+          IF c > 0 THEN
+            NPutC(126)
+            RXBUFF(c) = 32
+            c==-1
+          FI
+        ELSEIF c < 39 THEN
+
+          RXBUFF(c) = temp(i)
+
+          IF IMASK <> 0 THEN
+            temp(i) = IMASK
+          FI
+
+          NPutC(temp(i))      
+
+          c==+1
+        FI
+      OD
+    ELSE
+      TSleep(5)
+    FI
+  OD        
+  
+RETURN
+              
+
+PROC NPrintFile(BYTE ARRAY file)
+  BYTE l=[0]
+  
+  l = 0                  
+  i = 0                      
+  Close(FIOCB) 
+  Open(FIOCB,file,4,0)
+
+  DO
+    c = GetD(FIOCB)
+    RXBUFF(i) = c     
+
+    IF EOF(FIOCB) <> 0 THEN
+      NWrite(RXBUFF, i)
+      EXIT
+    FI
+
+    IF c = 155 THEN
+      l==+1
+    FI
+
+    i==+1
+
+    IF i > 39 OR l > 22 THEN 
+      NWrite(RXBUFF, i)
+      i = 0       
+
+      IF l > 22 THEN
+        NWriteS("[MORE]")
+        GetInp()
+        l = 0
+      FI            
+    FI 
+  OD     
+
+  Close(FIOCB)         
+
+RETURN
+
+
+
+INCLUDE "D3:MSGBASE1.ACT"
+
+
+PROC Wall()
+
+  NPutC(125)
+  NPrintFile("D2:WALL.DAT")
+           
+  NPutC(155)
+  NWriteS("Add to the wall [n]? ")
+  c = NGetB()
+  NPutC(155)
+
+  IF UCase(c) <> 'Y THEN
+    RETURN
+  FI
+
+  NPutC(155)
+  NWriteSE("Enter new wall text:")
+  GetInp()
+
+  IF RXBUFF(0) = 32 THEN
+    NWriteSE("Not adding entry..")
+    TSleep(10)
+    RETURN
+  FI         
+  RXBUFF(38) = 155
+  RXBUFF(39) = 155
+
+  NWriteSE("Saving...")
+  AppendFile("D2:WALL.DAT",UNAME,9)
+  AppendFile("D2:WALL.DAT",RXBUFF,38)
+  NPutC(155)
+  NWriteSE("Wall entry added!")
+  TSleep(10)
+
+RETURN
+
+
+PROC AcceptConn() 
+    
+  Print("Waiting")
+                         
+  WHILE IS_CONN = 0
+  DO                       
+
+    ERRNO = NCmd('A)
+
+    IF ERRNO = 209 THEN
+      TSleep(10)     
+    
+    ELSEIF ERRNO = 1 THEN
+      PutE()
+      PrintE("CONNECT")
+      IS_CONN = 1
+    FI
+  OD
+
+  UTIME = TS
+
+RETURN
+
+                                
+
+BYTE FUNC CheckNewUser()
+  
+  BYTE v1=[0]
+  BYTE ARRAY nu(11)="NEW       ",p(10)
+  i = 0             
+  c = 0      
+  v1 = 0             
+                   
+  FOR i = 0 TO 9
+  DO
+    IF UNAME(i) <> nu(i+1) THEN
+      RETURN (0)
+    FI
+  OD              
+
+  NPutC(155)
+  NWriteS("New Login: ")
+  GetInp()
+
+  IF RXBUFF(0) = 32 THEN
+    NWriteSE("Invalid username")
+    RETURN (0)
+  FI          
+
+  FOR i = 0 TO 9
+  DO
+    UNAME(i) = UCase(RXBUFF(i))
+  OD
+
+  v1 = AcctValid(0,p)
+
+  IF v1 = 1 THEN
+    NWriteSE("Account already exists!")
+    RETURN (2)
+  FI
+
+  NWriteS("New Password: ")
+  IMASK = '*
+  GetInp()
+  FOR i = 0 TO 9
+  DO
+    p(i) = UCase(RXBUFF(i))
+  OD
+
+  NWriteS("Confirm New Password: ")
+  GetInp()
+  FOR i = 0 TO 9
+  DO                     
+    c = UCase(RXBUFF(i))  
+    IF p(i) <> c THEN
+      NPutC(155)
+      NWriteSE("Passwords don't match!")
+      RETURN (2)
+    FI
+  OD     
+
+  IMASK = 0
+
+  NPutC(155)
+  NWriteSE("Please wait...")
+
+  FOR i = 0 TO 9
+  DO
+    RXBUFF(i) = UNAME(i)
+  OD
+
+  AppendFile(ULNAME,RXBUFF,9)
+
+  FOR i = 0 TO 9
+  DO
+    RXBUFF(i+10) = p(i)
+  OD
+  AppendFile(UFNAME,RXBUFF,19)
+  NPutC(155)
+  NWriteSE("New user created!")
+  
+RETURN (1)
+
+  
+
+BYTE FUNC DoLogin()
+
+  BYTE try=[0],new=[0]
+  BYTE ARRAY p(10)
+  v = 0                 
+  try = 0
+  i = 0
+  c = 0
+  new = 0
+               
+  NPutC(125)
+
+  FOR i = 0 TO 15
+  DO
+    NWriteSE(" ACTION8BBS ")
+  OD
+
+  NPutC(155)
+  NWriteSE("Welcome!") 
+  NWriteSE("Enter login or new")
+
+  WHILE v = 0 AND try < 3
+  DO
+    NPutC(155)
+    NWriteS("Login: ")
+       
+    GetInp()                  
+  
+    FOR i = 0 TO 9
+    DO   
+      UNAME(i) = UCase(RXBUFF(i))
+    OD         
+
+    new = 0
+    new = CheckNewUser()
+
+    IF new = 0 THEN    
+          
+      NWriteS("Password: ")
+
+      ; echo but mask with '*
+      IMASK = '*
+      GetInp()
+      IMASK = 0
+                     
+      FOR i = 0 TO 9
+      DO
+        p(i) = UCase(RXBUFF(i))
+      OD
+              
+
+      v = AcctValid(1,p)
+
+      IF v = 1 THEN
+        NPutC(155)
+        NWriteSE("Login success!")
+        NPutC(155)
+        NWriteS("Welcome back ")
+        NWrite(UNAME,10)
+      ELSE
+        NWriteSE("Login failed!")
+        try==+1
+      FI
+
+    ELSEIF new = 1 THEN
+      v = 1       
+    ELSE
+      v = 0
+      try==+1    
+    FI
+  OD
+
+RETURN (v)
+
+
+
+; main entry point for handling
+; user connections.
+PROC HandleUserConn()
+  
+  c = 0                              
+  v = 0
+
+  NWriteSE("Press RETURN to continue....")
+  
+  c = NGetB()
+
+  IF c <> 155 THEN
+    IS_CONN = 0
+    RETURN
+  FI
+             
+  v = DoLogin()               
+                     
+  IF v = 0 THEN
+    IS_CONN = 0
+    RETURN
+  ELSE     
+    NGetDT()
+    FOR i = 0 TO 9
+    DO            
+      RXBUFF(i+18) = UNAME(i)
+    OD
+    AppendFile("D2:CALL.LOG",RXBUFF,27)
+  FI
+  
+  NPutC(125)
+  NPrintFile("D2:TITLE.ATA")
+  NGetB()
+  
+  NPutC(125)  
+  NPrintFile("D2:MAINMENU.ATA")
+
+  c = 0
+      
+  WHILE IS_CONN = 1
+  DO          
+    NWriteS("MAIN> ")
+    c = NGetB()
+
+    IF c >= 97 THEN
+      c==-32
+    FI
+              
+    IF c = 'G THEN
+      IS_CONN = 0
+ 
+    ELSEIF c = 'C THEN         
+      NPutC(125)
+      NPrintFile("D2:CALL.LOG")
+
+    ELSEIF c = 'P THEN
+      PostMsg()
+
+    ELSEIF c = 'R THEN
+      ReadMsgs()   
+
+    ELSEIF c = 'S THEN
+      NPutC(125)
+      NPrintFile("D2:SYSINFO.TXT")
+
+    ELSEIF c = 'U THEN
+      NPutC(125)
+      NPrintFile(ULNAME)
+                                    
+    ELSEIF c = 'W THEN
+      Wall()
+
+    ELSEIF c = '? THEN
+      NPutC(125)
+      NPrintFile("D2:MAINMENU.ATA")
+
+    ELSEIF c = '# THEN
+      IS_CONN = 0
+      IMASK = '# 
+    ELSE
+      NWriteSE("Press ? for help")
+    FI
+
+  OD
+  NPutC(125)
+  NPrintFile("D2:LOGOUT.ATA")
+
+RETURN
+
+
+
+PROC Main()
+  Close(FIOCB)
+
+  ERRNO = NOpen()
+        
+  IF ERRNO <> 1 THEN
+    ERRNO = NCmd('C)
+    RETURN
+  FI
+
+  SetHIMSG()           
+
+  DO
+    AcceptConn()                     
+    HandleUserConn()       
+    ERRNO = NCmd('c)
+    IF IMASK = '# THEN
+      EXIT
+    FI
+  OD
+    
+  Close(FIOCB)
+
+  NCmd('C)
+
+RETURN
+
+
