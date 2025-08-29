@@ -33,4 +33,7 @@ You will need a terminal program capible of viewing/connecting to an ATASCII BBS
 * MuffinTerm - Mac only : https://muffinterm.app/
 * SyncTerm - Windows/Linux/Mac : https://syncterm.bbsdev.net/
 
+## Additional Credits
+
+The NETWORK.ACT library is a modified and expanded upon module based on the NIO.ACT library created by Thomas Cherryhomes. The original library can be found here: https://github.com/FujiNetWIFI/fujinet-apps/blob/master/netcat-action/NIO.ACT
 
