@@ -5,7 +5,7 @@ MODULE
 ; and inits the SysOp user.
 
 PROC CopyFile(BYTE ARRAY src, BYTE ARRAY dest)
-    
+
   BYTE c=[0]
   c = 0
 
@@ -25,21 +25,21 @@ PROC CopyFile(BYTE ARRAY src, BYTE ARRAY dest)
   Close(6)
 
 RETURN
-           
+
 PROC InitUsers()
-  
-  BYTE ARRAY u(10)        
-  BYTE c=[0]      
+
+  BYTE ARRAY u(10)
+  BYTE c=[0]
   c=0
 
   Print("Init User data [0]? ")
-  c = InputB()                   
+  c = InputB()
 
 
   IF c = 0 THEN
     RETURN
-  FI                   
-          
+  FI
+
   Close(6)
   PrintE("Creating new USERS.LST")
   Open(6, "D2:USERS.LST",8,0)
@@ -56,7 +56,7 @@ PROC InitUsers()
   PrintE(" PASS: YJQ57K")
 
   Open(6, "D2:USERS.DAT",8,0)
-  
+
   PutD(6,'S)
   PutD(6,'Y)
   PutD(6,'S)
@@ -87,7 +87,7 @@ RETURN
 
 
 PROC InitCallLog()
-           
+
   BYTE c=[0]
   c = 0
 
@@ -96,15 +96,15 @@ PROC InitCallLog()
 
   IF c = 0 THEN
     RETURN
-  FI      
+  FI
 
   Close(6)
   Open(6,"D2:CALL.LOG",8,0)
   PrintDE(6,"")
   PrintDE(6," L A S T  C A L L E R S ")
   PrintDE(6,"")
-  Close(6)                                  
-    
+  Close(6)
+
   PrintE("CALL.LOG initialized!")
 
 RETURN
@@ -128,15 +128,15 @@ PROC InitSysInfo()
   PrintDE(6,"")
   PrintDE(6," S Y S T E M    I N F O ")
   PrintDE(6,"")
-  Close(6)                                  
-    
+  Close(6)
+
   PrintE("SYSINFO.TXT initialized!")
 
 RETURN
 
 
 
-PROC InitWall() 
+PROC InitWall()
 
   BYTE c=[0]
   c = 0
@@ -154,20 +154,20 @@ PROC InitWall()
   PrintDE(6," O N E L I N E R S  W A L L ")
   PrintDE(6,"")
   Close(6)
-    
+
   PrintE("WALL.DAT initialized!")
-           
+
 
 RETURN
 
 
 ; creates a blank msg base with
 ; the file space filled and indexed
-; at each fixed record start 
+; at each fixed record start
 ; location.
 ;
-PROC InitMsgBase() 
-        
+PROC InitMsgBase()
+
   BYTE i=[0],o=[0]
   CARD c=[0],s=[0]
 
@@ -176,15 +176,15 @@ PROC InitMsgBase()
 
   IF i = 0 THEN
     RETURN
-  FI  
+  FI
 
   i = 0
-                    
+
   PutE()
   PrintE("Creating MSGBASE data and index")
   PrintE("files...")
   PrintE("This may take some time!")
-                 
+
   Close(5)
   Close(6)
 
@@ -200,14 +200,14 @@ PROC InitMsgBase()
 
     PrintCDE(6,s)
     PrintBDE(6,o)
-                  
+
     PrintDE(5,"         [END OF MESSAGES]")
     PrintDE(5,"_______________________________________")
     PrintDE(5," Next Msg   Jump   Reply   Exit")
     PutD(5,155)
 
     PutD(5,158) ;rs inverse for end
-  
+
     FOR c = 0 TO 944
     DO
       PutD(5,32) ;space fill
@@ -215,13 +215,13 @@ PROC InitMsgBase()
   OD
 
   Close(5)
-  Close(6) 
-            
+  Close(6)
+
   PrintE("Resetting HI msg to zero..")
   Open(5,"D2:MSGHI.DAT",8,0)
   PrintBDE(5,0)
   PrintBDE(5,0)
-  Close(5)                           
+  Close(5)
 
   PrintE("MSGBASE files initialized!")
 
@@ -230,7 +230,7 @@ RETURN
 
 
 PROC InitAtascii()
-      
+
   BYTE c=[0]
   c = 0
 
@@ -241,13 +241,14 @@ PROC InitAtascii()
     RETURN
   FI
 
+  CopyFile("D3:LOGIN.ATA","D2:LOGIN.ATA")
   CopyFile("D3:TITLE.ATA","D2:TITLE.ATA")
   CopyFile("D3:MAINMENU.ATA","D2:MAINMENU.ATA")
   CopyFile("D3:LOGOUT.ATA","D2:LOGOUT.ATA")
-          
-    
+
+
   PrintE("ATASCII files copied!")
-  
+
 
 
 RETURN
@@ -255,22 +256,21 @@ RETURN
 
 
 PROC main()
-                                    
+
   Put(125)
   PutE()
   PrintE("  ACTION8 BBS  SETUP             ")
   PutE()
 
-  InitUsers()                    
+  InitUsers()
   InitCallLog()
-  InitSysInfo()  
+  InitSysInfo()
   InitWall()
   InitMsgBase()
-  InitAtascii()     
+  InitAtascii()
 
   PutE()
   PrintE("Setup complete.")
 RETURN
-
 
 

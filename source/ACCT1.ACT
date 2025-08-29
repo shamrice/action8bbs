@@ -1,19 +1,14 @@
 MODULE
-
-BYTE UTIME = [0]
-
 ;set uname before checking pass!
 ;uname can be used in main app
 BYTE ARRAY UNAME(10)
 
 BYTE ARRAY UFNAME(0)="D2:USERS.DAT"
 BYTE ARRAY ULNAME(0)="D2:USERS.LST"
-                                
+
 BYTE UCH=[6]
-      
 
 BYTE FUNC UCase(BYTE ch)
-
   IF ch > 96 THEN
     ch==-32
   FI
@@ -21,31 +16,28 @@ RETURN (ch)
 
 
 BYTE FUNC AcctValid(BYTE checkP, BYTE ARRAY p)
-         
   BYTE uc=[0]
-                               
+
   v = 0
-  c = 0             
+  c = 0
   uc = 0
 
   Open(UCH,UFNAME,4,0)
-                           
+
   DO
     IF EOF(UCH) <> 0 THEN
       EXIT
     FI
-
     v = 1
     FOR i = 0 TO 9
     DO
       c = GetD(UCH)
       uc = UNAME(i)
-      
+
       IF c <> uc THEN
         v = 0
       FI
     OD
-
     IF v = 1 AND checkP <> 0 THEN
 
       FOR i = 0 TO 9
@@ -56,24 +48,21 @@ BYTE FUNC AcctValid(BYTE checkP, BYTE ARRAY p)
         IF c <> uc THEN
           v = 0
         FI
-      OD                        
-      
+      OD
+
       GetD(UCH) ;read \n
 
-    ELSE   
+    ELSE
       FOR i = 0 TO 10 ; +1 for\n
       DO
         c = GetD(UCH) ;read past pass
       OD
-    FI                     
-
+    FI
   UNTIL v = 1
-  OD 
-
+  OD
   Close(UCH)
- 
-RETURN (v)
 
+RETURN (v)
 
 
 

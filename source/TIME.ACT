@@ -1,22 +1,21 @@
 MODULE
 
 BYTE TS = $13
-  
+
 PROC TSleep(BYTE dur)
 
   BYTE t3=$14
   BYTE pT3=[0],j=[0]
-     
-  j=0 
-  pT3 = t3 
- 
+
+  j=0
+  pT3 = t3
+
   WHILE j < dur
   DO
     IF pT3 <> t3 THEN
       j==+1
     FI
     pT3 = t3
-  OD                             
-RETURN        
-
+  OD
+RETURN
 

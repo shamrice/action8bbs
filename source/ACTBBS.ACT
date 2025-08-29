@@ -1,15 +1,10 @@
-;
 ; Action! BBS
 ;
 ; Start Date: 2025-07-11
-; Last update: 2025-08-22
-;
+; Last update: 2025-08-29
 
-; Keep certain DOS from loading
-; program twice.
 BYTE RTS = [$60]
 
-; Only needed for standalone bin
 ;INCLUDE "D3:SYS.ACT"
 
 INCLUDE "D3:TIME.ACT"
@@ -18,20 +13,21 @@ MODULE
 
 DEFINE FIOCB="6"
 BYTE IMASK=[0]
+BYTE GFXMODE=[0]
 BYTE c=[0],i=[0],v=[0]
-                             
+
 INCLUDE "D3:NETWORK.ACT"
 INCLUDE "D3:ACCT1.ACT"
 INCLUDE "D3:FILE.ACT"
-      
 
 PROC GetInp()
-
   BYTE ARRAY temp(40)
-  CARD readLen=[0] 
+  CARD readLen=[0],s=[0],t=[0]
 
   readLen = 0
   c = 0
+  s = 0
+  t = 0
 
   FOR i = 0 TO 39
   DO
@@ -39,29 +35,43 @@ PROC GetInp()
     temp(i) = 32
   OD
 
+  IF IS_CONN = 0 THEN
+    RETURN
+  FI
+
   DO
     NStatus()
 
     IF TRIP <> 0 AND BYTESWAITING > 0 THEN
+      t = 0
+      readLen = BYTESWAITING
 
-      IF BYTESWAITING > 39 THEN
-        BYTESWAITING = 39
-      ELSE
-        readLen = BYTESWAITING
+      IF BYTESWAITING > 38 THEN
+        readLen = 38
       FI
 
       ERRNO = NRead(temp,readLen)
 
+      TRIP = 0
+      PACTL = PACTL % 1
+
       IF ERRNO <> 1 THEN
         PrintF("RERR: %B%E",ERRNO)
+        IS_CONN = 0
+        BYTESWAITING = 0
         RETURN
       FI
 
-      TRIP = 0
-      PACTL = PACTL % 1
- 
       FOR i = 0 TO readLen - 1
       DO
+
+        s = 0
+        IF GFXMODE = 0 THEN
+          IF temp(i) < 32 OR temp(i) > 122 THEN
+            s = 1
+          FI
+        FI
+
         IF temp(i) = 155 THEN
           NputC(155)
           RETURN
@@ -71,38 +81,41 @@ PROC GetInp()
             RXBUFF(c) = 32
             c==-1
           FI
-        ELSEIF c < 39 THEN
-
+        ELSEIF s = 0 AND c < 38 THEN
           RXBUFF(c) = temp(i)
-
           IF IMASK <> 0 THEN
             temp(i) = IMASK
           FI
-
-          NPutC(temp(i))      
-
+          NPutC(temp(i))
           c==+1
         FI
       OD
-    ELSE
-      TSleep(5)
     FI
-  OD        
-  
+
+    ;TSleep(5)
+    t==+1
+    IF t > 10000 THEN
+      NStatus()
+      NWriteSE("Input timeout")
+      IS_CONN = 0
+      RETURN
+    FI
+  OD
+
 RETURN
-              
+
 
 PROC NPrintFile(BYTE ARRAY file)
   BYTE l=[0]
-  
-  l = 0                  
-  i = 0                      
-  Close(FIOCB) 
+
+  l = 0
+  i = 0
+  Close(FIOCB)
   Open(FIOCB,file,4,0)
 
   DO
     c = GetD(FIOCB)
-    RXBUFF(i) = c     
+    RXBUFF(i) = c
 
     IF EOF(FIOCB) <> 0 THEN
       NWrite(RXBUFF, i)
@@ -115,33 +128,30 @@ PROC NPrintFile(BYTE ARRAY file)
 
     i==+1
 
-    IF i > 39 OR l > 22 THEN 
+    IF i > 39 OR l > 22 THEN
       NWrite(RXBUFF, i)
-      i = 0       
+      i = 0
 
       IF l > 22 THEN
-        NWriteS("[MORE]")
-        GetInp()
+        NWriteSE("[MORE]")
+        NGetB()
         l = 0
-      FI            
-    FI 
-  OD     
+      FI
+    FI
+  OD
 
-  Close(FIOCB)         
+  Close(FIOCB)
 
 RETURN
-
 
 
 INCLUDE "D3:MSGBASE1.ACT"
 
 
 PROC Wall()
-
   NPutC(125)
   NPrintFile("D2:WALL.DAT")
-           
-  NPutC(155)
+
   NWriteS("Add to the wall [n]? ")
   c = NGetB()
   NPutC(155)
@@ -158,59 +168,52 @@ PROC Wall()
     NWriteSE("Not adding entry..")
     TSleep(10)
     RETURN
-  FI         
+  FI
   RXBUFF(38) = 155
   RXBUFF(39) = 155
-
+  NPutC(155)
   NWriteSE("Saving...")
   AppendFile("D2:WALL.DAT",UNAME,9)
   AppendFile("D2:WALL.DAT",RXBUFF,38)
-  NPutC(155)
   NWriteSE("Wall entry added!")
   TSleep(10)
 
 RETURN
 
 
-PROC AcceptConn() 
-    
+PROC AcceptConn()
   Print("Waiting")
-                         
+
   WHILE IS_CONN = 0
-  DO                       
+  DO
+    TSleep(10)
 
     ERRNO = NCmd('A)
-
-    IF ERRNO = 209 THEN
-      TSleep(10)     
-    
-    ELSEIF ERRNO = 1 THEN
+    IF ERRNO = 1 THEN
       PutE()
       PrintE("CONNECT")
       IS_CONN = 1
+      GFXMODE = 0
+      NStatus()
     FI
   OD
 
-  UTIME = TS
-
 RETURN
 
-                                
 
 BYTE FUNC CheckNewUser()
-  
   BYTE v1=[0]
   BYTE ARRAY nu(11)="NEW       ",p(10)
-  i = 0             
-  c = 0      
-  v1 = 0             
-                   
+  i = 0
+  c = 0
+  v1 = 0
+
   FOR i = 0 TO 9
   DO
     IF UNAME(i) <> nu(i+1) THEN
       RETURN (0)
     FI
-  OD              
+  OD
 
   NPutC(155)
   NWriteS("New Login: ")
@@ -219,7 +222,7 @@ BYTE FUNC CheckNewUser()
   IF RXBUFF(0) = 32 THEN
     NWriteSE("Invalid username")
     RETURN (0)
-  FI          
+  FI
 
   FOR i = 0 TO 9
   DO
@@ -235,6 +238,7 @@ BYTE FUNC CheckNewUser()
 
   NWriteS("New Password: ")
   IMASK = '*
+
   GetInp()
   FOR i = 0 TO 9
   DO
@@ -243,17 +247,16 @@ BYTE FUNC CheckNewUser()
 
   NWriteS("Confirm New Password: ")
   GetInp()
+  IMASK = 0
   FOR i = 0 TO 9
-  DO                     
-    c = UCase(RXBUFF(i))  
+  DO
+    c = UCase(RXBUFF(i))
     IF p(i) <> c THEN
       NPutC(155)
       NWriteSE("Passwords don't match!")
       RETURN (2)
     FI
-  OD     
-
-  IMASK = 0
+  OD
 
   NPutC(155)
   NWriteSE("Please wait...")
@@ -272,61 +275,53 @@ BYTE FUNC CheckNewUser()
   AppendFile(UFNAME,RXBUFF,19)
   NPutC(155)
   NWriteSE("New user created!")
-  
+
 RETURN (1)
 
-  
+
 
 BYTE FUNC DoLogin()
 
   BYTE try=[0],new=[0]
   BYTE ARRAY p(10)
-  v = 0                 
+  v = 0
   try = 0
   i = 0
   c = 0
   new = 0
-               
+
   NPutC(125)
+  NPrintFile("D2:LOGIN.ATA")
 
-  FOR i = 0 TO 15
-  DO
-    NWriteSE(" ACTION8BBS ")
-  OD
-
-  NPutC(155)
-  NWriteSE("Welcome!") 
-  NWriteSE("Enter login or new")
-
-  WHILE v = 0 AND try < 3
+  WHILE v = 0 AND try < 3 AND IS_CONN = 1
   DO
     NPutC(155)
     NWriteS("Login: ")
-       
-    GetInp()                  
-  
+
+    GetInp()
+
     FOR i = 0 TO 9
-    DO   
+    DO
       UNAME(i) = UCase(RXBUFF(i))
-    OD         
+    OD
 
     new = 0
     new = CheckNewUser()
 
-    IF new = 0 THEN    
-          
+    IF new = 0 THEN
+
       NWriteS("Password: ")
 
       ; echo but mask with '*
       IMASK = '*
       GetInp()
       IMASK = 0
-                     
+
       FOR i = 0 TO 9
       DO
         p(i) = UCase(RXBUFF(i))
       OD
-              
+
 
       v = AcctValid(1,p)
 
@@ -342,10 +337,10 @@ BYTE FUNC DoLogin()
       FI
 
     ELSEIF new = 1 THEN
-      v = 1       
+      v = 1
     ELSE
       v = 0
-      try==+1    
+      try==+1
     FI
   OD
 
@@ -353,58 +348,58 @@ RETURN (v)
 
 
 
-; main entry point for handling
-; user connections.
 PROC HandleUserConn()
-  
-  c = 0                              
+
+  c = 0
   v = 0
 
   NWriteSE("Press RETURN to continue....")
-  
+
   c = NGetB()
 
   IF c <> 155 THEN
     IS_CONN = 0
     RETURN
   FI
-             
-  v = DoLogin()               
-                     
+
+  v = DoLogin()
+
   IF v = 0 THEN
     IS_CONN = 0
     RETURN
-  ELSE     
-    NGetDT()
-    FOR i = 0 TO 9
-    DO            
-      RXBUFF(i+18) = UNAME(i)
-    OD
-    AppendFile("D2:CALL.LOG",RXBUFF,27)
   FI
-  
+
+  NGetDT()
+  FOR i = 0 TO 9
+  DO
+    RXBUFF(i+18) = UNAME(i)
+  OD
+  AppendFile("D2:CALL.LOG",RXBUFF,27)
+
   NPutC(125)
   NPrintFile("D2:TITLE.ATA")
   NGetB()
-  
-  NPutC(125)  
+
+  NPutC(125)
   NPrintFile("D2:MAINMENU.ATA")
 
   c = 0
-      
+
   WHILE IS_CONN = 1
-  DO          
+  DO
     NWriteS("MAIN> ")
     c = NGetB()
 
     IF c >= 97 THEN
       c==-32
     FI
-              
+
     IF c = 'G THEN
+      NPutC(125)
+      NPrintFile("D2:LOGOUT.ATA")
       IS_CONN = 0
- 
-    ELSEIF c = 'C THEN         
+
+    ELSEIF c = 'C THEN
       NPutC(125)
       NPrintFile("D2:CALL.LOG")
 
@@ -412,7 +407,7 @@ PROC HandleUserConn()
       PostMsg()
 
     ELSEIF c = 'R THEN
-      ReadMsgs()   
+      ReadMsgs()
 
     ELSEIF c = 'S THEN
       NPutC(125)
@@ -421,7 +416,7 @@ PROC HandleUserConn()
     ELSEIF c = 'U THEN
       NPutC(125)
       NPrintFile(ULNAME)
-                                    
+
     ELSEIF c = 'W THEN
       Wall()
 
@@ -431,44 +426,39 @@ PROC HandleUserConn()
 
     ELSEIF c = '# THEN
       IS_CONN = 0
-      IMASK = '# 
+      IMASK = '#
     ELSE
       NWriteSE("Press ? for help")
     FI
 
   OD
-  NPutC(125)
-  NPrintFile("D2:LOGOUT.ATA")
-
 RETURN
-
 
 
 PROC Main()
   Close(FIOCB)
 
   ERRNO = NOpen()
-        
+
   IF ERRNO <> 1 THEN
     ERRNO = NCmd('C)
     RETURN
   FI
 
-  SetHIMSG()           
+  SetHIMSG()
 
   DO
-    AcceptConn()                     
-    HandleUserConn()       
+    AcceptConn()
+    HandleUserConn()
     ERRNO = NCmd('c)
     IF IMASK = '# THEN
       EXIT
     FI
   OD
-    
+
   Close(FIOCB)
 
   NCmd('C)
 
 RETURN
-
 

@@ -1,4 +1,4 @@
-MODULE 
+MODULE
 
 DEFINE NDEV = "$71"
 
@@ -39,7 +39,7 @@ PROC NProc(BYTE s)
   IF s = 1 THEN
     TRIP = 0
     VPRCEDSAVE = VPRCED
-    VPRCED = nIntHandler  
+    VPRCED = nIntHandler
     PACTL = PACTL % 1
   ELSE
     TRIP = 0
@@ -49,9 +49,7 @@ PROC NProc(BYTE s)
 RETURN
 
 
-
 PROC siov=$E459()
-                                  
 
 
 BYTE FUNC NStatus()
@@ -93,7 +91,7 @@ BYTE FUNC NOpen()
   DBYT   = 256
   DAUX1  = 12
   DAUX2  = 0
-  siov()            
+  siov()
   IF DSTATS = 1 THEN
     NProc(1)
   ELSE
@@ -127,11 +125,17 @@ BYTE FUNC NRead(BYTE ARRAY buf, CARD len)
   DTIMLO = $1F
   DBYT   = len
   DAUX   = len
-  siov()            
+  siov()
 RETURN (NGetError())
-            
+
 
 BYTE FUNC NWrite(BYTE ARRAY buf, CARD len)
+  BYTE c = $02EC
+
+  IF c = 0 OR IS_CONN = 0 THEN
+    RETURN (1)
+  FI
+
   DDEVIC = NDEV
   DUNIT  = 1
   DCOMND = 'W
@@ -140,7 +144,7 @@ BYTE FUNC NWrite(BYTE ARRAY buf, CARD len)
   DTIMLO = $1F
   DBYT   = len
   DAUX   = len
-  siov()            
+  siov()
 RETURN (NGetError())
 
 
@@ -155,7 +159,7 @@ BYTE FUNC NWriteS(BYTE ARRAY str)
   l = str(0)
   IF l > 39 THEN
     l = 39
-  FI  
+  FI
   FOR c = 1 TO l
   DO
     NSB(c-1) = str(c)
@@ -175,10 +179,12 @@ RETURN (ERRNO)
 
 
 BYTE FUNC NGetB()
-  v = 0           
+  BYTE t=[0]
+  v = 0
   c = 0
+  t = 0
   WHILE v = 0
-  DO    
+  DO
     NStatus()
     IF BYTESWAITING > 0 THEN
       ERRNO = NRead(RXBUFF, 1)
@@ -186,24 +192,31 @@ BYTE FUNC NGetB()
         PrintF("Read err: %B%E",ERRNO)
         IS_CONN = 0
         RETURN(c)
-      FI                     
-      c = RXBUFF(0)    
+      FI
+      c = RXBUFF(0)
       TRIP = 0
       PACTL = PACTL % 1
       V = 1
     ELSE
       TSleep(10)
+      t==+1
+      IF t > 250 THEN
+        NStatus()
+        NWriteSE("Input timeout!")
+        IS_CONN = 0
+        RETURN(c)
+      FI
     FI
   OD
 RETURN (c)
 
 
-BYTE FUNC NGetDT()    
+BYTE FUNC NGetDT()
   BYTE ARRAY t(3)
   BYTE ch=[0]
-            
+
   FOR i = 0 TO 6
-  DO             
+  DO
     NSB(i) = 0
   OD
 
@@ -216,8 +229,8 @@ BYTE FUNC NGetDT()
   DBYT   = 6
   DAUX1  = 0;$EE
   DAUX2  = 0;$A0
-  siov()      
-           
+  siov()
+
   SCopy(RXBUFF,"00/00/2025 00:00 ")
 
   ch = 0
@@ -226,12 +239,12 @@ BYTE FUNC NGetDT()
    ch = 1
   FI
   SAssign(RXBUFF,t,1+ch,2)
-                    
+
   ch=0
-  StrB(NSB(0), t)        
+  StrB(NSB(0), t)
   IF NSB(0) < 10 THEN
    ch=1
-  FI                
+  FI
   SAssign(RXBUFF,t,4+ch,5)
 
   StrB(NSB(2), t)
@@ -248,10 +261,9 @@ BYTE FUNC NGetDT()
   StrB(NSB(4), t)
   IF NSB(4) < 10 THEN
     ch=1
-  FI  
-                          
+  FI
+
   SAssign(RXBUFF,t,15+ch,16)
   RXBUFF(0) = 32
 RETURN (NGetError())
-
 

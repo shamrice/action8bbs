@@ -9,14 +9,14 @@ CARD MS=[0]
 BYTE ARRAY MBFNAME(0)="D2:MSGBASE.DAT"
 BYTE ARRAY MIFNAME(0)="D2:MSGBASE.IDX"
 BYTE ARRAY MHFNAME(0)="D2:MSGHI.DAT"
-                    
+
 PROC SetHIMSG()
   Open(6,MHFNAME,4,0)
   HIMSGID = InputBD(6)
   MBROLL = InputBD(6)
   Close(6)
 RETURN
-            
+
 
 PROC SetMsgCoords(BYTE id)
 
@@ -38,7 +38,7 @@ PROC SetMsgCoords(BYTE id)
     FI
     l==+1
   OD
-  
+
   Close(6)
 ;  PrintF("ID=%B MS=%U MO=%B%E",id,MS,MO)
 RETURN
@@ -46,16 +46,16 @@ RETURN
 
 
 PROC ViewMsg(BYTE id)
-      
+
   BYTE c=[0]
 
   SetMsgCoords(id)
 
   PrintF("View ID: %B%E",id)
-  
+
   c=0
   i=0
-      
+
   Close(5)
   Open(5,MBFNAME,12,0)
   Point(5,MS,MO)
@@ -67,7 +67,7 @@ PROC ViewMsg(BYTE id)
       id = 50 - (HIMSGID - id)
     ELSE
       id = id - HIMSGID
-    FI       
+    FI
   FI
 
   IF id = 0 THEN
@@ -77,10 +77,10 @@ PROC ViewMsg(BYTE id)
   NWriteS("  ID: ")
   StrB(id,RXBUFF)
   NWriteS(RXBUFF)
-    
+
   IF MBROLL = 1 THEN
     NWriteSE("/50+")
-  ELSE              
+  ELSE
     NPutC('/)
     StrB(HIMSGID,RXBUFF)
     NWriteSE(RXBUFF)
@@ -92,7 +92,7 @@ PROC ViewMsg(BYTE id)
     IF c = 158 THEN
       EXIT
     FI
-    
+
     RXBUFF(i) = c
     i==+1
 
@@ -107,7 +107,7 @@ PROC ViewMsg(BYTE id)
 
 RETURN
 
-             
+
 
 PROC PostMsg()
 
@@ -133,7 +133,7 @@ PROC PostMsg()
   FOR i = 0 TO 16
   DO
     PutD(5, RXBUFF(i))
-  OD              
+  OD
   PutD(5, 155)
 
   PrintD(5, "FROM: ")
@@ -143,35 +143,35 @@ PROC PostMsg()
     PutD(5, UNAME(i))
   OD
   PutD(5,155)
-                 
+
   NPutC(125)
-                
+
   SCopy(RXBUFF, "  TO: ")
   NWriteS(RXBUFF)
   PrintD(5, RXBUFF)
 
-  GetInp()  
+  GetInp()
 
   IF RXBUFF(0) = 32 THEN
     PrintDE(5, "ALL")
 
   ELSE
-    FOR i = 0 TO 29       
-    DO          
-      c = UCase(RXBUFF(i))   
+    FOR i = 0 TO 29
+    DO
+      c = UCase(RXBUFF(i))
       PutD(5, c)
     OD
     PutD(5, 155)
-  FI      
+  FI
 
-  SCopy(RXBUFF, "SUBJ: ")  
+  SCopy(RXBUFF, "SUBJ: ")
   NWriteS(RXBUFF)
   PrintD(5,RXBUFF)
 
   GetInp()
 
-  FOR i = 0 TO 29       
-  DO            
+  FOR i = 0 TO 29
+  DO
     PutD(5, RXBUFF(i))
   OD
   PutD(5,155)
@@ -184,15 +184,15 @@ PROC PostMsg()
   NWriteSE("----+---")
 
   j = 0
-  WHILE d = 0
+  WHILE d = 0 AND IS_CONN = 1
   DO
-    
+
     GetInp()
 
     FOR i = 0 TO 38
-    DO  
+    DO
       c = RXBUFF(i)
-   
+
       IF i = 0 AND c = '/ THEN
 
         IF RXBUFF(1) = 's THEN
@@ -202,23 +202,30 @@ PROC PostMsg()
           EXIT
 
         ELSEIF RXBUFF(1) = 'a THEN
-          d = 1                 
+          d = 1
           s = 0
           EXIT
 
+        ELSEIF RXBUFF(1) = 'g THEN
+          GFXMODE = GFXMODE ! 1
+          IF GFXMODE = 1 THEN
+            NWriteSE("Graphics mode on")
+          ELSE
+            NWriteSE("Graphics mode off")
+          FI
         ELSEIF RXBUFF(1) = '? THEN
           NWriteSE("/a - abort post")
           NWriteSE("/s - save post")
-          
+          NWriteSE("/g - toggle gfx mode")
         ELSE
           NWriteSE("Type /? for help")
-        FI                          
+        FI
 
-      ELSEIF j <= 20 THEN      
+      ELSEIF j <= 20 THEN
         PutD(5, c)
       FI
     OD
- 
+
     IF d = 0 AND j >= 20 THEN
       NWriteSE("Max msg lines reached!")
     ELSE
@@ -231,35 +238,39 @@ PROC PostMsg()
   PrintDE(5," Next Msg   Jump   Reply   Exit")
   PutD(5,155)
 
-                   
+
   IF s = 1 THEN
-    PutD(5,158) 
+    PutD(5,158)
 
     HIMSGID = nMsg
     NWriteSE("Message posted")
-          
+
     Close(6)
     Open(6,MHFNAME,8,0)
     PrintBDE(6,HIMSGID)
     PrintBDE(6,MBROLL)
     Close(6)
+    PrintE("New Msg")
   ELSE
     NWriteSE("Message cancelled")
   FI
 
   Close(5)
 
+  GFXMODE = 0
+
 RETURN
 
 
 PROC ReadMsgs()
-      
+
   BYTE n=[0]
-  n=HIMSGID        
-              
+  n=HIMSGID
+
   NPutC(125)
 
-  DO           
+  WHILE IS_CONN = 1
+  DO
     ViewMsg(n)
 
     NWriteS("MSGS> ")
@@ -274,16 +285,16 @@ PROC ReadMsgs()
       FI
       IF MBROLL = 0 AND n = 0 THEN
         n = 1
-      FI 
+      FI
 
     ELSEIF c = 'J THEN
       NPutC(155)
       NWriteS("TO MSG ID: ")
       GetInp()
-      
+
       IF RXBUFF(1) = 32 OR RXBUFF(1) = 155 THEN
         n = RXBUFF(0) - 48
-      ELSE 
+      ELSE
         c = (RXBUFF(0) - 48) * 10
         n = (RXBUFF(1) - 48) + c
       FI
@@ -294,12 +305,6 @@ PROC ReadMsgs()
         n = HIMSGID
       ELSE
         IF MBROLL = 1 THEN
-       ;   IF HIMSGID > n THEN
-       ;     c = (n + HIMSGID) - 50
-       ;   ELSE                   
-       ;     c = n + HIMSGID
-       ;   FI
-
           c = n + HIMSGID
           IF HIMSGID > n THEN
             c==-256
@@ -311,10 +316,10 @@ PROC ReadMsgs()
           ELSEIF n = 0 THEN
             n = 1
           FI
-        FI  
+        FI
         IF n >= 50 THEN
           n==-50
-        FI        
+        FI
       FI
 
     ELSEIF c = 'R THEN
