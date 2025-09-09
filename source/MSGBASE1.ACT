@@ -88,12 +88,11 @@ PROC ViewMsg(BYTE id)
 
   WHILE EOF(5) = 0
   DO
-    c = GetD(5)
-    IF c = 158 THEN
+    RXBUFF(i) = GetD(5)
+    IF RXBUFF(i) = 158 THEN
       EXIT
     FI
 
-    RXBUFF(i) = c
     i==+1
 
     IF i > 38 THEN

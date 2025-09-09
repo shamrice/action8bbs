@@ -3,6 +3,8 @@ MODULE
 DEFINE NDEV = "$71"
 
 DEFINE DVSTATADDR="$02EA"
+
+BYTE ni=[0],nc=[0],nv=[0]
 BYTE ERRNO=[0],IS_CONN=[0]
 BYTE BYTESREAD=[0]
 BYTE ARRAY RXBUFF(40)
@@ -65,21 +67,21 @@ BYTE FUNC NStatus()
 RETURN (EXTERR)
 
 
-BYTE FUNC NGetError()
+PROC NGetStatus()
   IF DSTATS = 144 THEN
     nstatus()
     ERRNO = EXTERR
   ELSE
     ERRNO = DSTATS
   FI
-RETURN (ERRNO)
+RETURN
 
 
-BYTE FUNC NOpen()
+PROC NOpen()
   BYTE ARRAY ds(255)
-  FOR i = 0 TO 254
+  FOR ni = 0 TO 254
   DO
-    ds(i) = 0
+    ds(ni) = 0
   OD
   SCopy(ds,"N:TCP://:6502")
   DDEVIC = NDEV
@@ -97,10 +99,10 @@ BYTE FUNC NOpen()
   ELSE
     PrintF("NOPEN_ERR:%B%E",DSTATS)
   FI
-RETURN (NGetError())
+RETURN
 
 
-BYTE FUNC NCmd(BYTE cmd)
+PROC NCmd(BYTE cmd)
   DDEVIC = NDEV
   DUNIT  = 1
   DCOMND = cmd
@@ -113,10 +115,10 @@ BYTE FUNC NCmd(BYTE cmd)
   IF cmd = 'C THEN
    NProc(0)
   FI
-RETURN (NGetError())
+RETURN
 
 
-BYTE FUNC NRead(BYTE ARRAY buf, CARD len)
+PROC NRead(BYTE ARRAY buf, CARD len)
   DDEVIC = NDEV
   DUNIT  = 1
   DCOMND = 'R
@@ -126,14 +128,14 @@ BYTE FUNC NRead(BYTE ARRAY buf, CARD len)
   DBYT   = len
   DAUX   = len
   siov()
-RETURN (NGetError())
+RETURN
 
 
-BYTE FUNC NWrite(BYTE ARRAY buf, CARD len)
+PROC NWrite(BYTE ARRAY buf, CARD len)
   BYTE c = $02EC
 
   IF c = 0 OR IS_CONN = 0 THEN
-    RETURN (1)
+    RETURN
   FI
 
   DDEVIC = NDEV
@@ -145,84 +147,52 @@ BYTE FUNC NWrite(BYTE ARRAY buf, CARD len)
   DBYT   = len
   DAUX   = len
   siov()
-RETURN (NGetError())
+RETURN
 
 
-BYTE FUNC NPutC(BYTE b)
+PROC NPutC(BYTE b)
   NSB(0) = b
-  ERRNO = NWrite(NSB, 1)
-RETURN (ERRNO)
+  NWrite(NSB, 1)
+RETURN
 
 
-BYTE FUNC NWriteS(BYTE ARRAY str)
+PROC NWriteS(BYTE ARRAY str)
   CARD l=[0]
   l = str(0)
   IF l > 39 THEN
     l = 39
   FI
-  FOR c = 1 TO l
+  FOR nc = 1 TO l
   DO
-    NSB(c-1) = str(c)
+    NSB(nc-1) = str(nc)
   OD
-  ERRNO = NWrite(NSB, l)
-RETURN (ERRNO)
+  NWrite(NSB, l)
+RETURN
 
 
-BYTE FUNC NWriteSE(BYTE ARRAY s)
-  ERRNO = NWriteS(s)
-  IF ERRNO <> 1 THEN
-    RETURN (ERRNO)
-  FI
-  ERRNO = NPutC(155)
-RETURN (ERRNO)
+PROC NWriteSE(BYTE ARRAY s)
+  NWriteS(s)
+;  NGetStatus()
+;  IF ERRNO <> 1 THEN
+;    RETURN
+;  FI
+  NPutC(155)
+RETURN
 
 
-
-BYTE FUNC NGetB()
-  BYTE t=[0]
-  v = 0
-  c = 0
-  t = 0
-  WHILE v = 0
-  DO
-    NStatus()
-    IF BYTESWAITING > 0 THEN
-      ERRNO = NRead(RXBUFF, 1)
-      IF ERRNO <> 1 THEN
-        PrintF("Read err: %B%E",ERRNO)
-        IS_CONN = 0
-        RETURN(c)
-      FI
-      c = RXBUFF(0)
-      TRIP = 0
-      PACTL = PACTL % 1
-      V = 1
-    ELSE
-      TSleep(10)
-      t==+1
-      IF t > 250 THEN
-        NStatus()
-        NWriteSE("Input timeout!")
-        IS_CONN = 0
-        RETURN(c)
-      FI
-    FI
-  OD
-RETURN (c)
-
-
-BYTE FUNC NGetDT()
+PROC NGetDT()
   BYTE ARRAY t(3)
   BYTE ch=[0]
 
-  FOR i = 0 TO 6
+  FOR ni = 0 TO 6
   DO
-    NSB(i) = 0
+    NSB(ni) = 0
   OD
 
   DDEVIC = $45
   DUNIT  = 1
-  DCOMND = $93
+;  DCOMND = $93
+  DCOMND = $9A
   DSTATS = 64;$40
   DBUF   = NSB
   DTIMLO = $1F
@@ -265,5 +235,5 @@ BYTE FUNC NGetDT()
 
   SAssign(RXBUFF,t,15+ch,16)
   RXBUFF(0) = 32
-RETURN (NGetError())
+RETURN
 

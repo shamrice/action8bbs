@@ -1,0 +1,82 @@
+
+; Needs to be in UTIL as requires
+; both TIME and NETWORK...
+BYTE FUNC NGetB()
+  nv = 0
+  nc = 0
+  WHILE nv = 0
+  DO
+    NStatus()
+    IF BYTESWAITING > 0 THEN
+      NRead(RXBUFF, 1)
+      NGetStatus()
+      IF ERRNO <> 1 THEN
+        PrintF("Read err: %B%E",ERRNO)
+        IS_CONN = 0
+        RETURN(nc)
+      FI
+      nc = RXBUFF(0)
+      TRIP = 0
+      PACTL = PACTL % 1
+      nv = 1
+    ELSE
+      IF TSessExp() = 1 THEN
+        RETURN(nc)
+      FI
+    FI
+  OD
+RETURN (nc)
+
+
+PROC NPrintFile(BYTE ARRAY file)
+  BYTE l=[0]
+
+  l = 0
+  i = 0
+
+  NPutC(125)
+
+  Close(FIOCB)
+  Open(FIOCB,file,4,0)
+
+  DO
+    RXBUFF(i) = GetD(FIOCB)
+
+    IF EOF(FIOCB) <> 0 THEN
+      NWrite(RXBUFF, i)
+      EXIT
+    FI
+
+    IF RXBUFF(i) = 155 THEN
+      l==+1
+    FI
+
+    i==+1
+
+    IF i > 39 OR l > 21 THEN
+      NWrite(RXBUFF, i)
+      i = 0
+
+      IF l > 21 THEN
+        NWriteS("[MORE]")
+        NGetB()
+        NPutC(155)
+        l = 0
+      FI
+    FI
+  OD
+
+  Close(FIOCB)
+
+RETURN
+
+
+
+
+
+
+BYTE FUNC UCase(BYTE ch)
+  IF ch > 96 THEN
+    ch==-32
+  FI
+RETURN (ch)

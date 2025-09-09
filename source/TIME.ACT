@@ -1,6 +1,22 @@
+
+
 MODULE
 
-BYTE TS = $13
+; session timer. TS ticks @ 18.2min
+BYTE TS = $12
+BYTE TSEXP = 0
+
+BYTE FUNC TSessExp()
+
+  IF TS > TSEXP THEN
+    PrintF("TSEXP=%B TS=%B%E",TSEXP,TS)
+
+    NStatus()
+    NWriteSE("Session expired!")
+    IS_CONN = 0
+    RETURN (1)
+  FI
+RETURN (0)
 
 PROC TSleep(BYTE dur)
 

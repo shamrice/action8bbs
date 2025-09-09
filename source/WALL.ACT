@@ -1,0 +1,32 @@
+PROC Wall()
+  NPrintFile("D2:WALL.DAT")
+
+  NWriteS("Add to the wall [n]? ")
+  c = NGetB()
+  NPutC(155)
+
+  IF UCase(c) <> 'Y THEN
+    RETURN
+  FI
+
+  NPutC(155)
+  NWriteSE("Enter new wall text:")
+  GetInp()
+
+  IF RXBUFF(0) = 32 THEN
+    NWriteSE("Not adding entry..")
+    TSleep(10)
+    RETURN
+  FI
+  RXBUFF(38) = 155
+  RXBUFF(39) = 155
+  NPutC(155)
+  NWriteSE("Saving...")
+  AppendFile("D2:WALL.DAT",UNAME,9)
+  AppendFile("D2:WALL.DAT",RXBUFF,38)
+  NWriteSE("Wall entry added!")
+  TSleep(10)
+
+RETURN
+
+

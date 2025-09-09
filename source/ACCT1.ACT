@@ -6,21 +6,25 @@ BYTE ARRAY UNAME(10)
 BYTE ARRAY UFNAME(0)="D2:USERS.DAT"
 BYTE ARRAY ULNAME(0)="D2:USERS.LST"
 
-BYTE UCH=[6]
+DEFINE UCH = "6"
 
-BYTE FUNC UCase(BYTE ch)
-  IF ch > 96 THEN
-    ch==-32
-  FI
-RETURN (ch)
+PROC AFieldMatch(BYTE ARRAY f)
+  BYTE c2=[0]
+  c = 0
+  c2 = 0
+  FOR i = 0 TO 9
+  DO
+    c = GetD(UCH)
+    c2 = f(i)
+    IF c <> c2 THEN
+      v = 0
+    FI
+  OD
+RETURN
 
 
 BYTE FUNC AcctValid(BYTE checkP, BYTE ARRAY p)
-  BYTE uc=[0]
-
   v = 0
-  c = 0
-  uc = 0
 
   Open(UCH,UFNAME,4,0)
 
@@ -29,35 +33,15 @@ BYTE FUNC AcctValid(BYTE checkP, BYTE ARRAY p)
       EXIT
     FI
     v = 1
-    FOR i = 0 TO 9
-    DO
-      c = GetD(UCH)
-      uc = UNAME(i)
+    AFieldMatch(UNAME)
 
-      IF c <> uc THEN
-        v = 0
-      FI
-    OD
-    IF v = 1 AND checkP <> 0 THEN
-
-      FOR i = 0 TO 9
-      DO
-        c = GetD(UCH)
-        uc = p(i)
-
-        IF c <> uc THEN
-          v = 0
-        FI
-      OD
-
-      GetD(UCH) ;read \n
-
-    ELSE
-      FOR i = 0 TO 10 ; +1 for\n
-      DO
-        c = GetD(UCH) ;read past pass
-      OD
+    IF v = 1 AND checkP = 0 THEN
+      EXIT
     FI
+
+    AFieldMatch(p)
+    GetD(UCH) ; read \n
+
   UNTIL v = 1
   OD
   Close(UCH)
@@ -65,4 +49,132 @@ BYTE FUNC AcctValid(BYTE checkP, BYTE ARRAY p)
 RETURN (v)
 
 
+BYTE FUNC CheckNewUser()
+  BYTE ARRAY nu(11)="NEW       ",p(10)
+  i = 0
+  c = 0
+
+  FOR i = 0 TO 9
+  DO
+    IF UNAME(i) <> nu(i+1) THEN
+      RETURN (0)
+    FI
+  OD
+
+  NPutC(155)
+  NWriteS("New Login: ")
+  GetInp()
+
+  IF RXBUFF(0) = 32 THEN
+    NWriteSE("Invalid username")
+    RETURN (2)
+  FI
+
+  FOR i = 0 TO 9
+  DO
+    UNAME(i) = UCase(RXBUFF(i))
+  OD
+
+  IF AcctValid(0,p) = 1 THEN
+    NWriteSE("Account already exists!")
+    RETURN (2)
+  FI
+
+  NWriteS("New Password: ")
+  IMASK = '*
+
+  GetInp()
+  IF RXBUFF(0) = 32 THEN
+    NWriteSE("Invalid password!")
+    RETURN (2)
+  FI
+  FOR i = 0 TO 9
+  DO
+    p(i) = UCase(RXBUFF(i))
+  OD
+
+  NWriteS("Confirm New Password: ")
+  GetInp()
+  FOR i = 0 TO 9
+  DO
+    c = UCase(RXBUFF(i))
+    IF p(i) <> c THEN
+      NPutC(155)
+      NWriteSE("Passwords don't match!")
+      RETURN (2)
+    FI
+  OD
+
+  NPutC(155)
+  NWriteSE("Please wait...")
+
+  FOR i = 0 TO 9
+  DO
+    RXBUFF(i) = UNAME(i)
+  OD
+
+  AppendFile(ULNAME,RXBUFF,9)
+
+  FOR i = 0 TO 9
+  DO
+    RXBUFF(i+10) = p(i)
+  OD
+  AppendFile(UFNAME,RXBUFF,19)
+RETURN (1)
+
+BYTE FUNC DoLogin()
+
+  BYTE try=[0],new=[0]
+  BYTE ARRAY p(10)
+  v = 0
+  try = 0
+  i = 0
+  c = 0
+  new = 0
+
+  NPrintFile("D2:LOGIN.ATA")
+
+  WHILE try < 3 AND IS_CONN = 1
+  DO
+    NPutC(155)
+    NWriteS("Login: ")
+
+    GetInp()
+
+    FOR i = 0 TO 9
+    DO
+      UNAME(i) = UCase(RXBUFF(i))
+    OD
+
+    new = CheckNewUser()
+    IMASK = 0
+
+    IF new = 1 THEN
+      RETURN (1)
+    FI
+
+    IF new = 0 THEN
+
+      NWriteS("Password: ")
+
+      ; echo but mask with '*
+      IMASK = '*
+      GetInp()
+      IMASK = 0
+
+      FOR i = 0 TO 9
+      DO
+        p(i) = UCase(RXBUFF(i))
+      OD
+
+      IF AcctValid(1,p) = 1 THEN
+        RETURN (1)
+      ELSE
+        NWriteSE("Login failed!")
+        try==+1
+      FI
+    FI
+  OD
+
+RETURN (v)
 

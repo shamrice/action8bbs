@@ -1,185 +1,107 @@
 ; Action! BBS
 ;
 ; Start Date: 2025-07-11
-; Last update: 2025-08-29
+; Last update: 2025-09-05
 
 BYTE RTS = [$60]
 
 ;INCLUDE "D3:SYS.ACT"
 
-INCLUDE "D3:TIME.ACT"
-
 MODULE
 
 DEFINE FIOCB="6"
 BYTE IMASK=[0]
-BYTE GFXMODE=[0]
+BYTE GFXMODE=[0],UCLOG=[0]
 BYTE c=[0],i=[0],v=[0]
 
 INCLUDE "D3:NETWORK.ACT"
-INCLUDE "D3:ACCT1.ACT"
+INCLUDE "D3:TIME.ACT"
 INCLUDE "D3:FILE.ACT"
+INCLUDE "D3:UTIL.ACT"
+
+CARD FUNC ReadInp()
+  CARD readLen=[0]
+
+; IF TRIP = 0 THEN
+;   RETURN (0)
+; FI
+
+  NStatus()
+
+  IF BYTESWAITING = 0 THEN
+    RETURN (0)
+  FI
+
+  IF BYTESWAITING > 38 THEN
+    BYTESWAITING = 38
+  FI
+  readLen = BYTESWAITING
+  NRead(NSB,readLen)
+
+  TRIP = 0
+  PACTL = PACTL % 1
+
+RETURN (readLen)
 
 PROC GetInp()
-  BYTE ARRAY temp(40)
-  CARD readLen=[0],s=[0],t=[0]
+  CARD readLen=[0]
 
   readLen = 0
   c = 0
-  s = 0
-  t = 0
 
   FOR i = 0 TO 39
   DO
     RXBUFF(i) = 32
-    temp(i) = 32
+    NSB(i) = 32
   OD
 
   IF IS_CONN = 0 THEN
     RETURN
   FI
 
+  WHILE IS_CONN = 1
   DO
-    NStatus()
+    readlen = ReadInp()
 
-    IF TRIP <> 0 AND BYTESWAITING > 0 THEN
-      t = 0
-      readLen = BYTESWAITING
+    IF readLen > 0 THEN
 
-      IF BYTESWAITING > 38 THEN
-        readLen = 38
-      FI
-
-      ERRNO = NRead(temp,readLen)
-
-      TRIP = 0
-      PACTL = PACTL % 1
-
-      IF ERRNO <> 1 THEN
-        PrintF("RERR: %B%E",ERRNO)
-        IS_CONN = 0
-        BYTESWAITING = 0
-        RETURN
-      FI
-
-      FOR i = 0 TO readLen - 1
+      readLen==-1
+      FOR i = 0 TO readLen
       DO
 
-        s = 0
-        IF GFXMODE = 0 THEN
-          IF temp(i) < 32 OR temp(i) > 122 THEN
-            s = 1
-          FI
-        FI
-
-        IF temp(i) = 155 THEN
-          NputC(155)
+        IF NSB(i) = 155 THEN
+          NPutC(155)
           RETURN
-        ELSEIF temp(i) = 126 THEN
-          IF c > 0 THEN
-            NPutC(126)
-            RXBUFF(c) = 32
-            c==-1
+        ELSEIF NSB(i) = 126 AND c > 0 THEN
+          NPutC(126)
+          RXBUFF(c) = 32
+          c==-1
+        ELSEIF c < 38 THEN
+
+          IF GFXMODE = 0 AND (NSB(i) < 32 OR NSB(i) > 122) THEN
+            ; IGNORE
+          ELSE
+            RXBUFF(c) = NSB(i)
+            IF IMASK > 0 THEN
+              NSB(i) = IMASK
+            FI
+            NPutC(NSB(i))
+            c==+1
           FI
-        ELSEIF s = 0 AND c < 38 THEN
-          RXBUFF(c) = temp(i)
-          IF IMASK <> 0 THEN
-            temp(i) = IMASK
-          FI
-          NPutC(temp(i))
-          c==+1
         FI
       OD
-    FI
-
-    ;TSleep(5)
-    t==+1
-    IF t > 10000 THEN
-      NStatus()
-      NWriteSE("Input timeout")
-      IS_CONN = 0
-      RETURN
-    FI
-  OD
-
-RETURN
-
-
-PROC NPrintFile(BYTE ARRAY file)
-  BYTE l=[0]
-
-  l = 0
-  i = 0
-  Close(FIOCB)
-  Open(FIOCB,file,4,0)
-
-  DO
-    c = GetD(FIOCB)
-    RXBUFF(i) = c
-
-    IF EOF(FIOCB) <> 0 THEN
-      NWrite(RXBUFF, i)
-      EXIT
-    FI
-
-    IF c = 155 THEN
-      l==+1
-    FI
-
-    i==+1
-
-    IF i > 39 OR l > 22 THEN
-      NWrite(RXBUFF, i)
-      i = 0
-
-      IF l > 22 THEN
-        NWriteSE("[MORE]")
-        NGetB()
-        l = 0
+    ELSE
+      IF TSessExp() = 1 THEN
+        RETURN
       FI
     FI
   OD
 
-  Close(FIOCB)
-
 RETURN
 
-
+INCLUDE "D3:ACCT1.ACT"
 INCLUDE "D3:MSGBASE1.ACT"
-
-
-PROC Wall()
-  NPutC(125)
-  NPrintFile("D2:WALL.DAT")
-
-  NWriteS("Add to the wall [n]? ")
-  c = NGetB()
-  NPutC(155)
-
-  IF UCase(c) <> 'Y THEN
-    RETURN
-  FI
-
-  NPutC(155)
-  NWriteSE("Enter new wall text:")
-  GetInp()
-
-  IF RXBUFF(0) = 32 THEN
-    NWriteSE("Not adding entry..")
-    TSleep(10)
-    RETURN
-  FI
-  RXBUFF(38) = 155
-  RXBUFF(39) = 155
-  NPutC(155)
-  NWriteSE("Saving...")
-  AppendFile("D2:WALL.DAT",UNAME,9)
-  AppendFile("D2:WALL.DAT",RXBUFF,38)
-  NWriteSE("Wall entry added!")
-  TSleep(10)
-
-RETURN
-
+INCLUDE "D3:WALL.ACT"
 
 PROC AcceptConn()
   Print("Waiting")
@@ -188,194 +110,50 @@ PROC AcceptConn()
   DO
     TSleep(10)
 
-    ERRNO = NCmd('A)
+    NCmd('A)
+    NGetStatus()
     IF ERRNO = 1 THEN
       PutE()
       PrintE("CONNECT")
       IS_CONN = 1
       GFXMODE = 0
+      ; reset session timer..
+      TSEXP = TS + 1
+
       NStatus()
     FI
   OD
-
 RETURN
 
 
-BYTE FUNC CheckNewUser()
-  BYTE v1=[0]
-  BYTE ARRAY nu(11)="NEW       ",p(10)
-  i = 0
-  c = 0
-  v1 = 0
-
-  FOR i = 0 TO 9
-  DO
-    IF UNAME(i) <> nu(i+1) THEN
-      RETURN (0)
-    FI
-  OD
-
-  NPutC(155)
-  NWriteS("New Login: ")
-  GetInp()
-
-  IF RXBUFF(0) = 32 THEN
-    NWriteSE("Invalid username")
-    RETURN (0)
-  FI
-
-  FOR i = 0 TO 9
-  DO
-    UNAME(i) = UCase(RXBUFF(i))
-  OD
-
-  v1 = AcctValid(0,p)
-
-  IF v1 = 1 THEN
-    NWriteSE("Account already exists!")
-    RETURN (2)
-  FI
-
-  NWriteS("New Password: ")
-  IMASK = '*
-
-  GetInp()
-  FOR i = 0 TO 9
-  DO
-    p(i) = UCase(RXBUFF(i))
-  OD
-
-  NWriteS("Confirm New Password: ")
-  GetInp()
-  IMASK = 0
-  FOR i = 0 TO 9
-  DO
-    c = UCase(RXBUFF(i))
-    IF p(i) <> c THEN
-      NPutC(155)
-      NWriteSE("Passwords don't match!")
-      RETURN (2)
-    FI
-  OD
-
-  NPutC(155)
-  NWriteSE("Please wait...")
-
-  FOR i = 0 TO 9
-  DO
-    RXBUFF(i) = UNAME(i)
-  OD
-
-  AppendFile(ULNAME,RXBUFF,9)
-
-  FOR i = 0 TO 9
-  DO
-    RXBUFF(i+10) = p(i)
-  OD
-  AppendFile(UFNAME,RXBUFF,19)
-  NPutC(155)
-  NWriteSE("New user created!")
-
-RETURN (1)
-
-
-
-BYTE FUNC DoLogin()
-
-  BYTE try=[0],new=[0]
-  BYTE ARRAY p(10)
-  v = 0
-  try = 0
-  i = 0
-  c = 0
-  new = 0
-
-  NPutC(125)
-  NPrintFile("D2:LOGIN.ATA")
-
-  WHILE v = 0 AND try < 3 AND IS_CONN = 1
-  DO
-    NPutC(155)
-    NWriteS("Login: ")
-
-    GetInp()
-
-    FOR i = 0 TO 9
-    DO
-      UNAME(i) = UCase(RXBUFF(i))
-    OD
-
-    new = 0
-    new = CheckNewUser()
-
-    IF new = 0 THEN
-
-      NWriteS("Password: ")
-
-      ; echo but mask with '*
-      IMASK = '*
-      GetInp()
-      IMASK = 0
-
-      FOR i = 0 TO 9
-      DO
-        p(i) = UCase(RXBUFF(i))
-      OD
-
-
-      v = AcctValid(1,p)
-
-      IF v = 1 THEN
-        NPutC(155)
-        NWriteSE("Login success!")
-        NPutC(155)
-        NWriteS("Welcome back ")
-        NWrite(UNAME,10)
-      ELSE
-        NWriteSE("Login failed!")
-        try==+1
-      FI
-
-    ELSEIF new = 1 THEN
-      v = 1
-    ELSE
-      v = 0
-      try==+1
-    FI
-  OD
-
-RETURN (v)
-
-
-
 PROC HandleUserConn()
-
   c = 0
   v = 0
 
   NWriteSE("Press RETURN to continue....")
-
-  c = NGetB()
-
+  DO
+    c = NGetB()
+    IF c < 155 THEN
+      v==+1
+    FI
+  UNTIL IS_CONN = 0 OR c = 155 OR v = 10
+  OD
+  v = 0
   IF c <> 155 THEN
     IS_CONN = 0
     RETURN
   FI
 
-  v = DoLogin()
+  TSEXP = TS + 1
 
-  IF v = 0 THEN
+  IF DoLogin() = 0 THEN
     IS_CONN = 0
     RETURN
   FI
 
-  NGetDT()
-  FOR i = 0 TO 9
-  DO
-    RXBUFF(i+18) = UNAME(i)
-  OD
-  AppendFile("D2:CALL.LOG",RXBUFF,27)
+  TSEXP = TS + 2
 
+  UCLOG = 1
   NPutC(125)
   NPrintFile("D2:TITLE.ATA")
   NGetB()
@@ -395,12 +173,10 @@ PROC HandleUserConn()
     FI
 
     IF c = 'G THEN
-      NPutC(125)
       NPrintFile("D2:LOGOUT.ATA")
       IS_CONN = 0
 
     ELSEIF c = 'C THEN
-      NPutC(125)
       NPrintFile("D2:CALL.LOG")
 
     ELSEIF c = 'P THEN
@@ -410,18 +186,15 @@ PROC HandleUserConn()
       ReadMsgs()
 
     ELSEIF c = 'S THEN
-      NPutC(125)
       NPrintFile("D2:SYSINFO.TXT")
 
     ELSEIF c = 'U THEN
-      NPutC(125)
       NPrintFile(ULNAME)
 
     ELSEIF c = 'W THEN
       Wall()
 
     ELSEIF c = '? THEN
-      NPutC(125)
       NPrintFile("D2:MAINMENU.ATA")
 
     ELSEIF c = '# THEN
@@ -438,22 +211,34 @@ RETURN
 PROC Main()
   Close(FIOCB)
 
-  ERRNO = NOpen()
-
+  NOpen()
+  NGetStatus()
   IF ERRNO <> 1 THEN
-    ERRNO = NCmd('C)
+    NCmd('C)
     RETURN
   FI
 
   SetHIMSG()
 
   DO
+    UCLOG = 0
     AcceptConn()
     HandleUserConn()
-    ERRNO = NCmd('c)
+    NCmd('c)
+
     IF IMASK = '# THEN
       EXIT
     FI
+
+    IF UCLOG = 1 THEN
+      NGetDT()
+      FOR i = 0 TO 9
+      DO
+        RXBUFF(i+18) = UNAME(i)
+      OD
+      AppendFile("D2:CALL.LOG",RXBUFF,27)
+    FI
+
   OD
 
   Close(FIOCB)
