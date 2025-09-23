@@ -29,8 +29,12 @@ RETURN
 PROC InitUsers()
 
   BYTE ARRAY u(10)
-  BYTE c=[0]
+  BYTE c=[0],o=[0],i=[0]
+  CARD s=[0]
   c=0
+  i=0
+  o=0
+  s=0
 
   Print("Init User data [0]? ")
   c = InputB()
@@ -48,6 +52,19 @@ PROC InitUsers()
   PrintDE(6,"")
 
   Close(6)
+
+  PrintE("Creating new USERS.ATR")
+  Open(6, "D2:USERS.ATR",8,0)
+  Note(6,@s,@o)
+  FOR i = 0 TO 31
+  DO
+    PutD(6,0)
+  OD
+;  PutD(6,155)
+  Close(6)
+  PrintF("SysOp ATTR: s=%U o=%B%E",s,o)
+
+
 
   PrintE("Creating new USERS.DAT")
 
@@ -77,11 +94,18 @@ PROC InitUsers()
   PutD(6,32)
   PutD(6,32)
   PutD(6,32)
-  PutD(6,155)
 
+
+  PutD(6,155)
+  PrintCDE(6,s)
+  PrintBDE(6,o)
   Close(6)
 
-  PrintE("User dat file created!")
+; Note(5,@s,@o)
+; Close(5)
+; PrintF("Next: s=%U o=%B%E",s,o)
+
+  PrintE("User data files created!")
 
 RETURN
 
@@ -241,11 +265,11 @@ PROC InitAtascii()
     RETURN
   FI
 
-  CopyFile("D3:LOGIN.ATA","D2:LOGIN.ATA")
-  CopyFile("D3:TITLE.ATA","D2:TITLE.ATA")
-  CopyFile("D3:MAINMENU.ATA","D2:MAINMENU.ATA")
-  CopyFile("D3:LOGOUT.ATA","D2:LOGOUT.ATA")
-
+  CopyFile("D1:LOGIN.ATA","D2:LOGIN.ATA")
+  CopyFile("D1:TITLE.ATA","D2:TITLE.ATA")
+  CopyFile("D1:MAINMENU.ATA","D2:MAINMENU.ATA")
+  CopyFile("D1:LOGOUT.ATA","D2:LOGOUT.ATA")
+  CopyFile("D1:MSGHELP.ATA","D2:MSGHELP.ATA")
 
   PrintE("ATASCII files copied!")
 

@@ -1,7 +1,7 @@
-; Action! BBS
+; Action!8! BBS
 ;
 ; Start Date: 2025-07-11
-; Last update: 2025-09-05
+; Last update: 2025-09-19
 
 BYTE RTS = [$60]
 
@@ -14,94 +14,13 @@ BYTE IMASK=[0]
 BYTE GFXMODE=[0],UCLOG=[0]
 BYTE c=[0],i=[0],v=[0]
 
-INCLUDE "D3:NETWORK.ACT"
-INCLUDE "D3:TIME.ACT"
-INCLUDE "D3:FILE.ACT"
-INCLUDE "D3:UTIL.ACT"
-
-CARD FUNC ReadInp()
-  CARD readLen=[0]
-
-; IF TRIP = 0 THEN
-;   RETURN (0)
-; FI
-
-  NStatus()
-
-  IF BYTESWAITING = 0 THEN
-    RETURN (0)
-  FI
-
-  IF BYTESWAITING > 38 THEN
-    BYTESWAITING = 38
-  FI
-  readLen = BYTESWAITING
-  NRead(NSB,readLen)
-
-  TRIP = 0
-  PACTL = PACTL % 1
-
-RETURN (readLen)
-
-PROC GetInp()
-  CARD readLen=[0]
-
-  readLen = 0
-  c = 0
-
-  FOR i = 0 TO 39
-  DO
-    RXBUFF(i) = 32
-    NSB(i) = 32
-  OD
-
-  IF IS_CONN = 0 THEN
-    RETURN
-  FI
-
-  WHILE IS_CONN = 1
-  DO
-    readlen = ReadInp()
-
-    IF readLen > 0 THEN
-
-      readLen==-1
-      FOR i = 0 TO readLen
-      DO
-
-        IF NSB(i) = 155 THEN
-          NPutC(155)
-          RETURN
-        ELSEIF NSB(i) = 126 AND c > 0 THEN
-          NPutC(126)
-          RXBUFF(c) = 32
-          c==-1
-        ELSEIF c < 38 THEN
-
-          IF GFXMODE = 0 AND (NSB(i) < 32 OR NSB(i) > 122) THEN
-            ; IGNORE
-          ELSE
-            RXBUFF(c) = NSB(i)
-            IF IMASK > 0 THEN
-              NSB(i) = IMASK
-            FI
-            NPutC(NSB(i))
-            c==+1
-          FI
-        FI
-      OD
-    ELSE
-      IF TSessExp() = 1 THEN
-        RETURN
-      FI
-    FI
-  OD
-
-RETURN
-
-INCLUDE "D3:ACCT1.ACT"
-INCLUDE "D3:MSGBASE1.ACT"
-INCLUDE "D3:WALL.ACT"
+INCLUDE "D1:NETWORK.ACT"
+INCLUDE "D1:TIME.ACT"
+INCLUDE "D1:FILE.ACT"
+INCLUDE "D1:UTIL.ACT"
+INCLUDE "D1:ACCT1.ACT"
+INCLUDE "D1:MSGBASE1.ACT"
+INCLUDE "D1:WALL.ACT"
 
 PROC AcceptConn()
   Print("Waiting")
@@ -127,8 +46,11 @@ RETURN
 
 
 PROC HandleUserConn()
+  BYTE ARRAY temp(40)
+  CARD uAttrTmp=[0]
   c = 0
   v = 0
+  uAttrTmp = 0
 
   NWriteSE("Press RETURN to continue....")
   DO
@@ -151,9 +73,17 @@ PROC HandleUserConn()
     RETURN
   FI
 
+  UCLOG = 1
   TSEXP = TS + 2
 
-  UCLOG = 1
+  SetUAttr()
+
+  ;increment login count
+  UATTR(4)==+1
+  IF UATTR(4) = 0 THEN
+    UATTR(3)==+1
+  FI
+
   NPutC(125)
   NPrintFile("D2:TITLE.ATA")
   NGetB()
@@ -188,6 +118,42 @@ PROC HandleUserConn()
     ELSEIF c = 'S THEN
       NPrintFile("D2:SYSINFO.TXT")
 
+    ELSEIF c = '/ THEN
+      ; temp debug print user attrs
+      ; TODO: make its own PROC
+      NPutC(125)
+      NWriteSE("          ACCOUNT STATS:          ")
+      NWriteSE("")
+      NPutC(155)
+      NWriteS("ACCOUNT CREATED: ")
+      StrB(UATTR(0),temp)
+      NWriteS(temp)
+      NWriteS("/")
+      StrB(UATTR(1),temp)
+      NWriteS(temp)
+      NWriteS("/")
+      StrB(UATTR(2),temp)
+      NWriteSE(temp)
+      NWriteS("     NUM LOGINS: ")
+      uAttrTmp = UATTR(4)
+      IF UATTR(3) > 0 THEN
+        uAttrTmp==*UATTR(3)
+      FI
+      StrC(uAttrTmp,temp)
+      NWriteSE(temp)
+      NWriteS("    LAST HI-MSG: ")
+      StrB(UATTR(5),temp)
+      NWriteSE(temp)
+
+      NWriteS(" NUM POSTS MADE: ")
+      uAttrTmp = UATTR(7)
+      IF UATTR(6) > 0 THEN
+        uAttrTmp==*UATTR(6)
+      FI
+      StrC(uAttrTmp,temp)
+      NWriteSE(temp)
+      NPutC(155)
+
     ELSEIF c = 'U THEN
       NPrintFile(ULNAME)
 
@@ -209,6 +175,8 @@ RETURN
 
 
 PROC Main()
+  Put(125)
+  PrintE("           ACTION8BBS             ")
   Close(FIOCB)
 
   NOpen()
@@ -237,6 +205,8 @@ PROC Main()
         RXBUFF(i+18) = UNAME(i)
       OD
       AppendFile("D2:CALL.LOG",RXBUFF,27)
+
+      SaveUAttr()
     FI
 
   OD

@@ -47,14 +47,19 @@ RETURN
 
 PROC ViewMsg(BYTE id)
 
-  BYTE c=[0]
+  BYTE c=[0],l=[0]
+
+  ; keep track of user himsgid
+  IF id > UATTR(5) THEN
+    UATTR(5) = id
+  FI
 
   SetMsgCoords(id)
 
   PrintF("View ID: %B%E",id)
-
   c=0
   i=0
+  l=1
 
   Close(5)
   Open(5,MBFNAME,12,0)
@@ -91,13 +96,34 @@ PROC ViewMsg(BYTE id)
     RXBUFF(i) = GetD(5)
     IF RXBUFF(i) = 158 THEN
       EXIT
+    ELSEIF RXBUFF(i) = 155 THEN
+      l==+1
     FI
 
     i==+1
 
-    IF i > 38 THEN
+    IF i > 38 OR l > 18 THEN
       NWrite(RXBUFF,i)
       i = 0
+      IF l > 18 THEN
+        NWriteS("[MORE]")
+        NGetB()
+        NPutC(155)
+        l = 0
+      ELSE
+        NStatus()
+
+        IF BYTESWAITING > 0 THEN
+          NRead(NSB, 1)
+          TRIP = 0
+          PACTL = PACTL % 1
+          IF NSB(0) = 3 THEN
+            NPutC(155)
+            PrintE("^C FOUND")
+            EXIT
+          FI
+        FI
+      FI
     FI
   OD
   NWrite(RXBUFF,i)
@@ -193,17 +219,14 @@ PROC PostMsg()
       c = RXBUFF(i)
 
       IF i = 0 AND c = '/ THEN
-
         IF RXBUFF(1) = 's THEN
           d = 1
           s = 1
           NWriteSE("Saving post!")
-          EXIT
 
         ELSEIF RXBUFF(1) = 'a THEN
           d = 1
           s = 0
-          EXIT
 
         ELSEIF RXBUFF(1) = 'g THEN
           GFXMODE = GFXMODE ! 1
@@ -220,6 +243,8 @@ PROC PostMsg()
           NWriteSE("Type /? for help")
         FI
 
+        EXIT
+
       ELSEIF j <= 20 THEN
         PutD(5, c)
       FI
@@ -227,19 +252,19 @@ PROC PostMsg()
 
     IF d = 0 AND j >= 20 THEN
       NWriteSE("Max msg lines reached!")
-    ELSE
+      j = 50 ; random OOB num
+    ELSEIF RXBUFF(0) <> '/ THEN
       PutD(5, 155)
       j==+1
     FI
-
   OD
   PrintDE(5,"_______________________________________")
-  PrintDE(5," Next Msg   Jump   Reply   Exit")
+  PrintDE(5," Next Msg  Jump  Reply  Exit  ?Help")
   PutD(5,155)
-
 
   IF s = 1 THEN
     PutD(5,158)
+    Close(5) ; too many open files error when IOCB 6 was opened before 5 was closed...
 
     HIMSGID = nMsg
     NWriteSE("Message posted")
@@ -249,12 +274,16 @@ PROC PostMsg()
     PrintBDE(6,HIMSGID)
     PrintBDE(6,MBROLL)
     Close(6)
+
+    UATTR(7)==+1
+    IF UATTR(7) = 0 THEN
+      UATTR(6)==+1
+    FI
     PrintE("New Msg")
   ELSE
-    NWriteSE("Message cancelled")
+    Close(5)
+    NWriteSE("Message canceled")
   FI
-
-  Close(5)
 
   GFXMODE = 0
 
@@ -263,16 +292,34 @@ RETURN
 
 PROC ReadMsgs()
 
-  BYTE n=[0]
-  n=HIMSGID
+  BYTE n=[0],rDraw=[1]
+  INT dir=[0]
+
+  rDraw=1
+  dir=-1
+
+  ; set to user last read if exists
+  IF UATTR(5) = 0 OR UATTR(5) = HIMSGID THEN
+    n=HIMSGID
+  ELSE
+    n=UATTR(5) + 1
+    dir=1
+  FI
 
   NPutC(125)
 
   WHILE IS_CONN = 1
   DO
-    ViewMsg(n)
+    IF rDraw = 1 THEN
+      ViewMsg(n)
 
-    NWriteS("MSGS> ")
+      IF dir = 1 THEN
+        NWriteS("MSGS+> ")
+      ELSE
+        NWriteS("MSGS-> ")
+      FI
+    FI
+    rDraw = 1
     c = NGetB()
     c = UCase(c)
 
@@ -280,7 +327,7 @@ PROC ReadMsgs()
       IF n = 0 THEN
         n = 49
       ELSE
-        n==-1
+        n==+dir
       FI
       IF MBROLL = 0 AND n = 0 THEN
         n = 1
@@ -326,10 +373,24 @@ PROC ReadMsgs()
 
     ELSEIF c = 'X THEN
       EXIT
+    ELSEIF c = 'A THEN
+      ;default redraw
+    ELSEIF c = 'F or c = '+ THEN
+      dir = 1
+      NPutC(155)
+      NWriteSE("FORWARD READ")
+    ELSEIF c = 'B or c = '- THEN
+      dir = -1
+      NPutC(155)
+      NWriteSE("BACKWARD READ")
+    ELSEIF c = '? THEN
+      NPrintFile("D2:MSGHELP.ATA")
+      NGetB()
+    ELSE
+      rDraw = 0
     FI
   OD
 
   NPutC(155)
 
 RETURN
-

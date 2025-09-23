@@ -1,10 +1,15 @@
+
 MODULE
 ;set uname before checking pass!
 ;uname can be used in main app
 BYTE ARRAY UNAME(10)
+BYTE ARRAY UATTR(32)
+CARD USECT=[0]
+BYTE UOFFSET=[0]
 
 BYTE ARRAY UFNAME(0)="D2:USERS.DAT"
 BYTE ARRAY ULNAME(0)="D2:USERS.LST"
+BYTE ARRAY UANAME(0)="D2:USERS.ATR"
 
 DEFINE UCH = "6"
 
@@ -40,11 +45,18 @@ BYTE FUNC AcctValid(BYTE checkP, BYTE ARRAY p)
     FI
 
     AFieldMatch(p)
-    GetD(UCH) ; read \n
+    GetD(UCH) ; \n
+    USECT = InputCD(UCH)
+    UOFFSET = InputBD(UCH)
+
+    PrintF("S=%U O=%B%E",USECT,UOFFSET)
+    ;GetD(UCH) ; read \n
 
   UNTIL v = 1
   OD
   Close(UCH)
+
+  PrintF("FINAL: S=%U O=%B%E",USECT,UOFFSET)
 
 RETURN (v)
 
@@ -108,6 +120,28 @@ BYTE FUNC CheckNewUser()
   NPutC(155)
   NWriteSE("Please wait...")
 
+  NGetDt()
+
+  ;add attributes entry
+  Open(UCH,UANAME,9,0)
+  PutD(UCH,155)
+  Note(UCH,@USECT,@UOFFSET)
+
+  ;acct create date MDY first 3 bytes
+  PutD(UCH,NSB(1))
+  PutD(UCH,NSB(0))
+  PutD(UCH,NSB(2))
+
+  FOR i = 3 TO 31
+  DO
+    PutD(UCH,0)
+  OD
+
+  Close(UCH)
+  PrintF("NewUserAttr: s=%U o=%B%E",USECT,UOFFSET)
+
+
+  ;append user list
   FOR i = 0 TO 9
   DO
     RXBUFF(i) = UNAME(i)
@@ -115,12 +149,24 @@ BYTE FUNC CheckNewUser()
 
   AppendFile(ULNAME,RXBUFF,9)
 
+
+  ;add username/password entry
   FOR i = 0 TO 9
   DO
     RXBUFF(i+10) = p(i)
   OD
-  AppendFile(UFNAME,RXBUFF,19)
+
+  Open(UCH,UFNAME,9,0)
+  FOR i = 0 TO 19
+  DO
+    PutD(UCH,RXBUFF(i))
+  OD
+  PutD(UCH,155)
+  PrintCDE(UCH,USECT)
+  PrintBDE(UCH,UOFFSET)
+  Close(UCH)
 RETURN (1)
+
 
 BYTE FUNC DoLogin()
 
@@ -167,9 +213,13 @@ BYTE FUNC DoLogin()
         p(i) = UCase(RXBUFF(i))
       OD
 
+      NPutC(155)
+      NWriteSE("Validating credentials...")
+
       IF AcctValid(1,p) = 1 THEN
         RETURN (1)
       ELSE
+        NPutC(155)
         NWriteSE("Login failed!")
         try==+1
       FI
@@ -177,4 +227,31 @@ BYTE FUNC DoLogin()
   OD
 
 RETURN (v)
+
+
+PROC SetUAttr()
+  Open(UCH,UANAME,12,0)
+  Point(UCH,USECT,UOFFSET)
+
+  FOR i = 0 TO 31
+  DO
+    UATTR(i) = GetD(UCH)
+;    PrintF("Attr(%B)=%B%E",i,UATTR(i))
+  OD
+
+  Close(UCH)
+RETURN
+
+
+PROC SaveUAttr()
+  Open(UCH,UANAME,12,0)
+  Point(UCH,USECT,UOFFSET)
+
+  FOR i = 0 TO 31
+  DO
+    PutD(UCH,UATTR(i))
+  OD
+  Close(UCH)
+  PrintE("User attrs saved")
+RETURN
 

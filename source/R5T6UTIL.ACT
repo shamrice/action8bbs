@@ -1,0 +1,142 @@
+;
+; Action8Run#5->#6 Migrator Tool
+;
+; Created: 2025-09-19
+; Updated: 2025-09-19
+;
+; Reads in USERS.DAT file from vers
+; older than Run#6 and converts it
+; to the new format.
+;
+; USERS.ATR will be created new
+; USERS.DAT will remain untouched.
+;
+; New data is written to USERS.NEW
+;
+; After running tool, will need to
+; manually copy/rename USERS.NEW to
+; USERS.DAT
+;
+
+
+BYTE RTS = [$60]
+
+;INCLUDE "D1:SYS.ACT"
+
+PROC Main()
+
+  BYTE i=[0],o=[0],inp=[0],year=[0]
+  CARD s=[0]
+  BYTE ARRAY t(40)
+
+  i = 0
+  inp = 0
+  s = 0
+  o = 0
+  year = 0
+
+  Close(4)
+  Close(5)
+  Close(6)
+
+  Put(125)
+  PrintE("    ACTION8 USER UPDATE TOOL   ")
+  PutE()
+  Print("Add attrs to USERS.DAT? [0]")
+  i = InputB()
+  PutE()
+  IF i <> 1 THEN
+    PrintE("Stopping here.")
+    RETURN
+  FI
+
+  PrintE(" INPUT: D2:USERS.DAT")
+  PrintE("OUTPUT: D2:USERS.NEW")
+  PrintE("   ATR: D2:USERS.ATR")
+  PutE()
+
+  Print("Use same year for all? [0]")
+  inp = InputB()
+  IF inp <> 0 THEN
+    Print("Year to use: ")
+    year = InputB()
+  FI
+  PutE()
+
+  Open(4,"D2:USERS.NEW",8,0)
+  Open(5,"D2:USERS.ATR",8,0)
+  Open(6,"D2:USERS.DAT",4,0)
+
+  DO
+    IF EOF(6) <> 0 THEN
+      PrintE("End of users found!")
+      EXIT
+    FI
+
+    Print("USER:")
+
+    FOR i = 0 TO 20
+    DO
+      t(i) = GetD(6)
+      Put(t(i))
+      IF t(i) = 155 THEN
+        PrintF("NEWLINE@%B",i)
+        EXIT
+      FI
+    OD
+    PutE()
+
+    IF t(0) = 32 OR t(0) = 155 THEN
+      PrintE("End of user list.")
+      EXIT
+    FI
+
+    Note(5,@s,@o)
+    PrintF("ATTR: s=%U o=%B%E",s,o)
+
+    Print("Create month: ")
+    inp = InputB()
+    PutD(5,inp)
+
+    Print("Create day: ")
+    inp = InputB()
+    PutD(5,inp)
+
+    IF year = 0 THEN
+      Print("Create year: ")
+      inp = InputB()
+    ELSE
+      inp = year
+    FI
+    PutD(5,inp)
+
+    FOR i = 3 TO 31
+    DO
+      PutD(5,0)
+    OD
+    PutD(5,155)
+
+    PrintE("Adding to USERS.NEW..")
+
+    FOR i = 0 TO 20
+    DO
+      PutD(4,t(i))
+    OD
+    PrintCDE(4,s)
+    PrintBDE(4,o)
+
+    PutE()
+  OD
+
+  PrintE("Closing files...")
+  Close(4)
+  Close(5)
+  Close(6)
+
+  PutE()
+  PrintE("Done!")
+  PutE()
+  PrintE("REMEMBER to copy over USERS.NEW!")
+
+
+RETURN

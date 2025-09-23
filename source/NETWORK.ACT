@@ -234,6 +234,8 @@ PROC NGetDT()
   FI
 
   SAssign(RXBUFF,t,15+ch,16)
+
+  PrintF("%S%E",RXBUFF)
   RXBUFF(0) = 32
 RETURN
 

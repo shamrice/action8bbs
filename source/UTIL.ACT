@@ -1,4 +1,11 @@
 
+
+BYTE FUNC UCase(BYTE ch)
+  IF ch > 96 THEN
+    ch==-32
+  FI
+RETURN (ch)
+
 ; Needs to be in UTIL as requires
 ; both TIME and NETWORK...
 BYTE FUNC NGetB()
@@ -30,7 +37,7 @@ RETURN (nc)
 
 PROC NPrintFile(BYTE ARRAY file)
   BYTE l=[0]
-
+  c = 0
   l = 0
   i = 0
 
@@ -58,10 +65,27 @@ PROC NPrintFile(BYTE ARRAY file)
       i = 0
 
       IF l > 21 THEN
-        NWriteS("[MORE]")
-        NGetB()
-        NPutC(155)
+        IF c <> 'C THEN
+          NWriteS("[MORE or Continuous]")
+          c = NGetB()
+          c = UCase(c)
+          NPutC(155)
+        FI
         l = 0
+      ELSE
+        NStatus()
+
+        IF BYTESWAITING > 0 THEN
+          NRead(NSB, 1)
+          TRIP = 0
+          PACTL = PACTL % 1
+          IF NSB(0) = 3 THEN
+            NPutC(155)
+            PrintE("^C FOUND")
+            EXIT
+          FI
+        FI
+
       FI
     FI
   OD
@@ -71,12 +95,83 @@ PROC NPrintFile(BYTE ARRAY file)
 RETURN
 
 
+CARD FUNC ReadInp()
+  CARD readLen=[0]
 
+; IF TRIP = 0 THEN
+;   RETURN (0)
+; FI
 
+  NStatus()
 
-
-BYTE FUNC UCase(BYTE ch)
-  IF ch > 96 THEN
-    ch==-32
+  IF BYTESWAITING = 0 THEN
+    RETURN (0)
   FI
-RETURN (ch)
+
+  IF BYTESWAITING > 38 THEN
+    BYTESWAITING = 38
+  FI
+  readLen = BYTESWAITING
+  NRead(NSB,readLen)
+
+  TRIP = 0
+  PACTL = PACTL % 1
+
+RETURN (readLen)
+
+PROC GetInp()
+  CARD readLen=[0]
+
+  readLen = 0
+  c = 0
+
+  FOR i = 0 TO 39
+  DO
+    RXBUFF(i) = 32
+    NSB(i) = 32
+  OD
+
+  IF IS_CONN = 0 THEN
+    RETURN
+  FI
+
+  WHILE IS_CONN = 1
+  DO
+    readlen = ReadInp()
+
+    IF readLen > 0 THEN
+
+      readLen==-1
+      FOR i = 0 TO readLen
+      DO
+
+        IF NSB(i) = 155 THEN
+          NPutC(155)
+          RETURN
+        ELSEIF NSB(i) = 126 AND c > 0 THEN
+          NPutC(126)
+          RXBUFF(c) = 32
+          c==-1
+        ELSEIF c < 38 THEN
+
+          IF GFXMODE = 0 AND (NSB(i) < 32 OR NSB(i) > 122) THEN
+            ; IGNORE
+          ELSE
+            RXBUFF(c) = NSB(i)
+            IF IMASK > 0 THEN
+              NSB(i) = IMASK
+            FI
+            NPutC(NSB(i))
+            c==+1
+          FI
+        FI
+      OD
+    ELSE
+      IF TSessExp() = 1 THEN
+        RETURN
+      FI
+    FI
+  OD
+
+RETURN
+
