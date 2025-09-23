@@ -8,10 +8,15 @@ Atari 8bit ATASCII BBS written in Action! for the Fujinet.
 * Mount the source files on D3
 * Compile and run SETUPBBS to initialize all necessary data files (todo: add ATASCII files to repo)
 * Complie and run ACTBBS to start the BBS
-  
-**Note 1:** Drive numbers are currently hard code to sources in D3 and data in D2. If you want to use different drive numbers, you'll need to edit the source code.
 
-**Note 2:** You can also compile the setup and main BBS program to a binary executable and run that way instead of running from inside of Action. (untested)
+**Note 1:** Drive numbers are currently hard code to sources in D1 or D3 and data in D2. If you want to use different drive numbers, you'll need to edit the source code.
+
+**Note 2:** You can also compile the setup and main BBS program to a binary executable and run that way instead of running from inside of Action. As of Run #6, adding SYS.ACT causes the standalone compile to error out due to lack of symbol space. (Will attempt to address at a later date...)
+
+**Alternate Setup**
+* Action! Cartridge
+* Sources on D1 with DOS files copied over.
+* Data in D2
 
 ## Running
 
@@ -36,4 +41,3 @@ You will need a terminal program capible of viewing/connecting to an ATASCII BBS
 ## Additional Credits
 
 The NETWORK.ACT library is a modified and expanded upon module based on the NIO.ACT library created by Thomas Cherryhomes. The original library can be found here: https://github.com/FujiNetWIFI/fujinet-apps/blob/master/netcat-action/NIO.ACT
-
