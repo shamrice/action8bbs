@@ -1,3 +1,8 @@
+MODULE
+;set uname before checking pass!
+;uname can be used in main app
+BYTE ARRAY UNAME(10)
+BYTE ARRAY UATTR(32)
 
 
 BYTE FUNC UCase(BYTE ch)
@@ -23,8 +28,8 @@ BYTE FUNC NGetB()
         RETURN(nc)
       FI
       nc = RXBUFF(0)
-      TRIP = 0
-      PACTL = PACTL % 1
+;     TRIP = 0
+;     PACTL = PACTL % 1
       nv = 1
     ELSE
       IF TSessExp() = 1 THEN
@@ -77,11 +82,11 @@ PROC NPrintFile(BYTE ARRAY file)
 
         IF BYTESWAITING > 0 THEN
           NRead(NSB, 1)
-          TRIP = 0
-          PACTL = PACTL % 1
+;          TRIP = 0
+;          PACTL = PACTL % 1
           IF NSB(0) = 3 THEN
-            NPutC(155)
-            PrintE("^C FOUND")
+;            NPutC(155)
+;            PrintE("^C FOUND")
             EXIT
           FI
         FI
@@ -114,12 +119,13 @@ CARD FUNC ReadInp()
   readLen = BYTESWAITING
   NRead(NSB,readLen)
 
-  TRIP = 0
-  PACTL = PACTL % 1
+; TRIP = 0
+; PACTL = PACTL % 1
 
 RETURN (readLen)
 
-PROC GetInp()
+;returns idx of last char
+BYTE FUNC GetInp()
   CARD readLen=[0]
 
   readLen = 0
@@ -132,7 +138,7 @@ PROC GetInp()
   OD
 
   IF IS_CONN = 0 THEN
-    RETURN
+    RETURN(0)
   FI
 
   WHILE IS_CONN = 1
@@ -147,7 +153,7 @@ PROC GetInp()
 
         IF NSB(i) = 155 THEN
           NPutC(155)
-          RETURN
+          RETURN (c)
         ELSEIF NSB(i) = 126 AND c > 0 THEN
           NPutC(126)
           RXBUFF(c) = 32
@@ -168,10 +174,10 @@ PROC GetInp()
       OD
     ELSE
       IF TSessExp() = 1 THEN
-        RETURN
+        RETURN(c)
       FI
     FI
   OD
 
-RETURN
+RETURN(c)
 

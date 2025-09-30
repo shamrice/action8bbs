@@ -1,0 +1,95 @@
+
+PROC SetUAttr()
+  Open(UCH,UANAME,12,0)
+  Point(UCH,USECT,UOFFSET)
+
+  FOR i = 0 TO 31
+  DO
+    UATTR(i) = GetD(UCH)
+;    PrintF("Attr(%B)=%B%E",i,UATTR(i))
+  OD
+
+  Close(UCH)
+RETURN
+
+
+PROC SaveUAttr()
+  Open(UCH,UANAME,12,0)
+  Point(UCH,USECT,UOFFSET)
+
+  FOR i = 0 TO 31
+  DO
+    PutD(UCH,UATTR(i))
+  OD
+  Close(UCH)
+  PrintE("User attrs saved")
+RETURN
+
+PROC UAttrConfig()
+  BYTE ARRAY temp(40)
+  CARD uAttrTmp=[0]
+
+  uAttrTmp=0
+
+  DO
+    NPutC(125)
+    NWriteSE("          ACCOUNT STATS:          ")
+    NWriteSE("")
+    NPutC(155)
+    NWriteS("ACCOUNT CREATED: ")
+    StrB(UATTR(0),temp)
+    NWriteS(temp)
+    NWriteS("/")
+    StrB(UATTR(1),temp)
+    NWriteS(temp)
+    NWriteS("/")
+    StrB(UATTR(2),temp)
+    NWriteSE(temp)
+    NWriteS("     NUM LOGINS: ")
+    uAttrTmp = UATTR(4)
+    IF UATTR(3) > 0 THEN
+      uAttrTmp==*UATTR(3)
+    FI
+    StrC(uAttrTmp,temp)
+    NWriteSE(temp)
+    NWriteS("    LAST HI-MSG: ")
+    uAttrTmp = GetDispId(UATTR(5))
+    StrB(uAttrTmp,temp)
+    NWriteSE(temp)
+
+    NWriteS(" NUM POSTS MADE: ")
+    uAttrTmp = UATTR(7)
+    IF UATTR(6) > 0 THEN
+      uAttrTmp==*UATTR(6)
+    FI
+    StrC(uAttrTmp,temp)
+    NWriteSE(temp)
+    NPutC(155)
+    NPutC(155)
+    NWriteSE("SETTINGS")
+    NWriteSE("________")
+    NWriteS("1)View Msg Help Bar ")
+    IF UATTR(8) = 0 THEN
+      NPutC('*)
+    FI
+    NWriteS("SHOW ")
+    IF UATTR(8) = 1 THEN
+      NPutC('*)
+    FI
+    NWriteSE("HIDE")
+
+    NPutC(155)
+    NWriteS("# to change or RETURN to exit")
+    c = NGetB()
+
+    IF c = '1 THEN
+      UATTR(8) = UATTR(8) ! 1
+    ELSE
+      EXIT
+    FI
+  OD
+  NPutC(155)
+  NPutC(155)
+
+RETURN
+

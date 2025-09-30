@@ -58,7 +58,11 @@ PROC InitUsers()
   Note(6,@s,@o)
   FOR i = 0 TO 31
   DO
-    PutD(6,0)
+    IF i = 9 THEN
+      PutD(6,255) ;SysOp permissions
+    ELSE
+      PutD(6,0)
+    FI
   OD
 ;  PutD(6,155)
   Close(6)
@@ -226,8 +230,6 @@ PROC InitMsgBase()
     PrintBDE(6,o)
 
     PrintDE(5,"         [END OF MESSAGES]")
-    PrintDE(5,"_______________________________________")
-    PrintDE(5," Next Msg   Jump   Reply   Exit")
     PutD(5,155)
 
     PutD(5,158) ;rs inverse for end

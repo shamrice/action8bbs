@@ -11,10 +11,10 @@ BYTE ARRAY RXBUFF(40)
 
 CARD BYTESWAITING=$02EA
 
-CARD VPRCEDSAVE=[0]
-CARD VPRCED = $0202
-BYTE PACTL = $D302
-BYTE TRIP
+;CARD VPRCEDSAVE=[0]
+;CARD VPRCED = $0202
+;BYTE PACTL = $D302
+;BYTE TRIP  = [0]
 
 BYTE DVSTAT = $02EA
 BYTE EXTERR = $02ED
@@ -33,22 +33,22 @@ BYTE DAUX2  = $030B
 
 BYTE ARRAY NSB(40)
 
-PROC nIntHandler=*()
-[$A9$01$8D TRIP $68$40]
+;PROC nIntHandler=*()
+;[$A9$01$8D TRIP $68$40]
 
 
-PROC NProc(BYTE s)
-  IF s = 1 THEN
-    TRIP = 0
-    VPRCEDSAVE = VPRCED
-    VPRCED = nIntHandler
-    PACTL = PACTL % 1
-  ELSE
-    TRIP = 0
-    VPRCED = VPRCEDSAVE
-  FI
-
-RETURN
+;PROC NProc(BYTE s)
+;  IF s = 1 THEN
+;    TRIP = 0
+;    VPRCEDSAVE = VPRCED
+;    VPRCED = nIntHandler
+;    PACTL = PACTL % 1
+;  ELSE
+;    TRIP = 0
+;    VPRCED = VPRCEDSAVE
+;  FI
+;
+;RETURN
 
 
 PROC siov=$E459()
@@ -94,11 +94,11 @@ PROC NOpen()
   DAUX1  = 12
   DAUX2  = 0
   siov()
-  IF DSTATS = 1 THEN
-    NProc(1)
-  ELSE
-    PrintF("NOPEN_ERR:%B%E",DSTATS)
-  FI
+;  IF DSTATS = 1 THEN
+;    NProc(1)
+;  ELSE
+;    PrintF("NOPEN_ERR:%B%E",DSTATS)
+;  FI
 RETURN
 
 
@@ -112,9 +112,9 @@ PROC NCmd(BYTE cmd)
   DBYT   = 0
   DAUX   = 0
   siov()
-  IF cmd = 'C THEN
-   NProc(0)
-  FI
+;  IF cmd = 'C THEN
+;   NProc(0)
+;  FI
 RETURN
 
 

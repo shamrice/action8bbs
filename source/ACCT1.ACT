@@ -1,9 +1,5 @@
 
 MODULE
-;set uname before checking pass!
-;uname can be used in main app
-BYTE ARRAY UNAME(10)
-BYTE ARRAY UATTR(32)
 CARD USECT=[0]
 BYTE UOFFSET=[0]
 
@@ -49,14 +45,13 @@ BYTE FUNC AcctValid(BYTE checkP, BYTE ARRAY p)
     USECT = InputCD(UCH)
     UOFFSET = InputBD(UCH)
 
-    PrintF("S=%U O=%B%E",USECT,UOFFSET)
-    ;GetD(UCH) ; read \n
+;    PrintF("S=%U O=%B%E",USECT,UOFFSET)
 
   UNTIL v = 1
   OD
   Close(UCH)
 
-  PrintF("FINAL: S=%U O=%B%E",USECT,UOFFSET)
+;  PrintF("FINAL: S=%U O=%B%E",USECT,UOFFSET)
 
 RETURN (v)
 
@@ -131,8 +126,11 @@ BYTE FUNC CheckNewUser()
   PutD(UCH,NSB(1))
   PutD(UCH,NSB(0))
   PutD(UCH,NSB(2))
+  PutD(UCH,0) ;login highbyte
+  PutD(UCH,0) ;login lowbyte
+  PutD(UCH,HIMSGID)
 
-  FOR i = 3 TO 31
+  FOR i = 6 TO 31
   DO
     PutD(UCH,0)
   OD
@@ -227,31 +225,4 @@ BYTE FUNC DoLogin()
   OD
 
 RETURN (v)
-
-
-PROC SetUAttr()
-  Open(UCH,UANAME,12,0)
-  Point(UCH,USECT,UOFFSET)
-
-  FOR i = 0 TO 31
-  DO
-    UATTR(i) = GetD(UCH)
-;    PrintF("Attr(%B)=%B%E",i,UATTR(i))
-  OD
-
-  Close(UCH)
-RETURN
-
-
-PROC SaveUAttr()
-  Open(UCH,UANAME,12,0)
-  Point(UCH,USECT,UOFFSET)
-
-  FOR i = 0 TO 31
-  DO
-    PutD(UCH,UATTR(i))
-  OD
-  Close(UCH)
-  PrintE("User attrs saved")
-RETURN
 

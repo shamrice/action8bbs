@@ -1,11 +1,11 @@
 ; Action!8! BBS
 ;
 ; Start Date: 2025-07-11
-; Last update: 2025-09-19
+; Last update: 2025-09-30
 
 BYTE RTS = [$60]
 
-;INCLUDE "D3:SYS.ACT"
+INCLUDE "D1:SYSBBS.ACT"
 
 MODULE
 
@@ -18,12 +18,18 @@ INCLUDE "D1:NETWORK.ACT"
 INCLUDE "D1:TIME.ACT"
 INCLUDE "D1:FILE.ACT"
 INCLUDE "D1:UTIL.ACT"
-INCLUDE "D1:ACCT1.ACT"
 INCLUDE "D1:MSGBASE1.ACT"
+INCLUDE "D1:ACCT1.ACT"
+INCLUDE "D1:ACCTATTR.ACT"
 INCLUDE "D1:WALL.ACT"
 
 PROC AcceptConn()
-  Print("Waiting")
+  BYTE KB = $02FC
+
+  Close(2)
+  Open(2,"K:",4,0)
+
+  PrintE("Waiting. Press # to shutdown")
 
   WHILE IS_CONN = 0
   DO
@@ -40,17 +46,26 @@ PROC AcceptConn()
       TSEXP = TS + 1
 
       NStatus()
+    ELSE
+      IF KB <> $FF THEN
+        c = GetD(2)
+        IF c = '# THEN
+          PrintE("WARN! Server shutdown!")
+          IS_CONN = 0
+          IMASK = '#
+          EXIT
+        FI
+      FI
     FI
   OD
+
+  Close(2)
 RETURN
 
 
 PROC HandleUserConn()
-  BYTE ARRAY temp(40)
-  CARD uAttrTmp=[0]
   c = 0
   v = 0
-  uAttrTmp = 0
 
   NWriteSE("Press RETURN to continue....")
   DO
@@ -84,11 +99,9 @@ PROC HandleUserConn()
     UATTR(3)==+1
   FI
 
-  NPutC(125)
   NPrintFile("D2:TITLE.ATA")
   NGetB()
 
-  NPutC(125)
   NPrintFile("D2:MAINMENU.ATA")
 
   c = 0
@@ -119,40 +132,7 @@ PROC HandleUserConn()
       NPrintFile("D2:SYSINFO.TXT")
 
     ELSEIF c = '/ THEN
-      ; temp debug print user attrs
-      ; TODO: make its own PROC
-      NPutC(125)
-      NWriteSE("          ACCOUNT STATS:          ")
-      NWriteSE("")
-      NPutC(155)
-      NWriteS("ACCOUNT CREATED: ")
-      StrB(UATTR(0),temp)
-      NWriteS(temp)
-      NWriteS("/")
-      StrB(UATTR(1),temp)
-      NWriteS(temp)
-      NWriteS("/")
-      StrB(UATTR(2),temp)
-      NWriteSE(temp)
-      NWriteS("     NUM LOGINS: ")
-      uAttrTmp = UATTR(4)
-      IF UATTR(3) > 0 THEN
-        uAttrTmp==*UATTR(3)
-      FI
-      StrC(uAttrTmp,temp)
-      NWriteSE(temp)
-      NWriteS("    LAST HI-MSG: ")
-      StrB(UATTR(5),temp)
-      NWriteSE(temp)
-
-      NWriteS(" NUM POSTS MADE: ")
-      uAttrTmp = UATTR(7)
-      IF UATTR(6) > 0 THEN
-        uAttrTmp==*UATTR(6)
-      FI
-      StrC(uAttrTmp,temp)
-      NWriteSE(temp)
-      NPutC(155)
+      UAttrConfig()
 
     ELSEIF c = 'U THEN
       NPrintFile(ULNAME)
@@ -160,12 +140,17 @@ PROC HandleUserConn()
     ELSEIF c = 'W THEN
       Wall()
 
+    ELSEIF c = 'I THEN
+      NPrintFile("D1:INFIL.ATA")
+
     ELSEIF c = '? THEN
       NPrintFile("D2:MAINMENU.ATA")
 
     ELSEIF c = '# THEN
-      IS_CONN = 0
-      IMASK = '#
+      IF UATTR(9) = 255 THEN
+        IS_CONN = 0
+        IMASK = '#
+      FI
     ELSE
       NWriteSE("Press ? for help")
     FI
@@ -183,37 +168,49 @@ PROC Main()
   NGetStatus()
   IF ERRNO <> 1 THEN
     NCmd('C)
+    PrintE("ERROR opening connection!")
     RETURN
   FI
 
   SetHIMSG()
+  IMASK=0
+  IS_CONN = 0
 
   DO
     UCLOG = 0
     AcceptConn()
-    HandleUserConn()
-    NCmd('c)
+
+    IF IS_CONN = 1 THEN
+      HandleUserConn()
+      NCmd('c)
+    FI
 
     IF IMASK = '# THEN
       EXIT
     FI
 
     IF UCLOG = 1 THEN
+      Print("LOGOFF DATE: ")
       NGetDT()
+      Print("LOGOFF USER: ")
       FOR i = 0 TO 9
       DO
         RXBUFF(i+18) = UNAME(i)
+        Put(UNAME(i))
       OD
+      PutE()
       AppendFile("D2:CALL.LOG",RXBUFF,27)
 
       SaveUAttr()
     FI
-
+    PutE()
   OD
 
   Close(FIOCB)
 
   NCmd('C)
+
+  PrintE("Server offline.")
 
 RETURN
 
