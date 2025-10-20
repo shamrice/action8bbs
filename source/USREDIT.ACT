@@ -1,0 +1,309 @@
+;
+; Action 8 BBS User Editor
+;
+; Created: 2025-10-19
+; Updated: 2025-10-20
+;
+;
+;
+CARD USECT=[0]
+BYTE UOFFSET=[0]
+
+BYTE ARRAY UFNAME(0)="D2:USERS.DAT"
+BYTE ARRAY UANAME(0)="D2:USERS.ATR"
+BYTE ARRAY ULNAME(0)="D2:USERS.LST"
+BYTE ARRAY UNAME(10)
+BYTE ARRAY UATTR(32)
+
+
+PROC SetAttr(BYTE idx)
+  BYTE nVal=[0]
+
+  nVal = 0
+
+  IF idx = 0 THEN
+    PrintE("ERROR>> Invalid id!")
+    RETURN
+  FI
+
+  idx==-1
+
+  PrintF("OLD VALUE: %B%E",UATTR(idx))
+  Print("NEW VALUE: ")
+
+  nVal = InputB()
+
+  UATTR(idx) = nVal
+
+RETURN
+
+
+PROC ListUserAttrs()
+  BYTE ARRAY a(4)
+  BYTE i=[0]
+
+  Put(125)
+  PutE()
+  PrintE("USER ATTRIBUTES:")
+  PrintE("-------------------------------")
+
+  PutE()
+  Print(" 1)        CREATE MONTH: ")
+  PrintBE(UATTR(0))
+
+  Print(" 2)          CREATE DAY: ")
+  PrintBE(UATTR(1))
+
+  Print(" 3)         CREATE YEAR: ")
+  PrintBE(UATTR(2))
+
+  Print(" 4) LOGIN CNT HIGH BYTE: ")
+  PrintBE(UATTR(3))
+
+  Print(" 5)  LOGIN CNT LOW BYTE: ")
+  PrintBE(UATTR(4))
+
+  Print(" 6)            HIMSG ID: ")
+  PrintBE(UATTR(5))
+
+  Print(" 7)NUM MSGS POSTED HIGH: ")
+  PrintBE(UATTR(6))
+
+  Print(" 8) NUM MSGS POSTED LOW: ")
+  PrintBE(UATTR(7))
+
+  Print(" 9)   HIDE MSG HELP BAR: ")
+  PrintBE(UATTR(8))
+
+  Print("10)     USER PERM LEVEL: ")
+  PrintBE(UATTR(9))
+
+  PutE()
+  PrintE("-------------------------------")
+  PrintE(" 0) Exit to main menu")
+  PrintE("-------------------------------")
+
+RETURN
+
+
+
+BYTE FUNC SetEditUser()
+  BYTE i=[0],c=[0],v=[0],offTmp=[0]
+  CARD sectTmp=[0]
+  BYTE ARRAY user(11)
+
+  v=0
+
+  FOR i = 0 TO 31
+  DO
+    UATTR(i)=0
+  OD
+
+  FOR i = 0 TO 9
+  DO
+    UNAME(i)=32
+  OD
+  USECT=0
+  UOFFSET=0
+
+  Put(125)
+  PutE()
+  PrintE("EDIT USER:")
+  Print("Username: ")
+
+  InputS(user)
+
+  FOR i = 1 TO user(0)
+  DO
+    c = user(i)
+    IF c > 90 THEN
+      c==-32
+    FI
+    UNAME(i-1)=c
+  OD
+
+;  PutE()
+;  PrintF("ENTERED: %S%E",user)
+
+;  FOR i = 0 TO 9
+;  DO
+;    Put(UNAME(i))
+;  OD
+
+  Close(5)
+  Open(5,UFNAME,4,0)
+
+  DO
+    IF EOF(5) <> 0 THEN
+      EXIT
+    FI
+
+    v = 1
+
+    ;PutE()
+    FOR i = 0 TO 9
+    DO
+      c = GetD(5)
+;      Put(c)
+      IF UNAME(i) <> c THEN
+        ;Put('!)
+        v = 0
+      FI
+    OD
+
+    FOR i = 0 TO 9
+    DO
+      c=GetD(5)
+      ;Put(c)
+    OD
+    GetD(5)
+
+    sectTmp = InputCD(5)
+    offTmp = InputBD(5)
+
+    ;PutE()
+    IF v = 1 THEN
+      USECT = sectTmp
+      UOFFSET = offTmp
+;      PrintF("%U %B%E",sectTmp,offTmp)
+
+      EXIT
+    FI
+  OD
+
+  Close(5)
+
+  PutE()
+  IF v = 1 THEN
+    ;PrintE(">> USER FOUND!")
+
+    ; set user attrs
+    Open(5,UANAME,12,0)
+    Point(5,USECT,UOFFSET)
+
+    FOR i = 0 TO 31
+    DO
+      UATTR(i) = GetD(5)
+    OD
+
+    Close(5)
+
+  ELSE
+    PrintE("ERROR>> USER NOT FOUND!")
+    PutE()
+    PrintE("<PRESS RETURN>")
+    InputB()
+  FI
+
+RETURN(v)
+
+
+PROC EditUser()
+  BYTE v=[0],c=[0],i=[0]
+  v=0
+
+  v = SetEditUser()
+
+  IF v = 0 THEN
+    RETURN
+  FI
+
+  WHILE v <> 0
+  DO
+
+    ListUserAttrs()
+
+    Print("EDIT>> ")
+    c = InputB()
+
+    IF c = 0 THEN
+      v = 0
+    ELSEIF c > 0 AND c <= 32 THEN
+      SetAttr(c)
+    ELSE
+      PrintE("ERROR>> Invalid selection")
+      PutE()
+      PrintE("<PRESS RETURN>")
+      InputB()
+    FI
+  OD
+
+  PrintE("SAVING USER ATTRIBUTES...")
+
+  Close(5)
+  Open(5,UANAME,12,0)
+
+  Point(5,USECT,UOFFSET)
+
+  FOR i = 0 TO 31
+  DO
+    PutD(5,UATTR(i))
+  OD
+  Close(5)
+
+
+RETURN
+
+
+
+PROC ListUsers()
+  BYTE c=[0]
+
+  Put(125)
+  PutE()
+;  PrintE("-----------------------")
+
+  Close(5)
+  Open(5,ULNAME,4,0)
+
+  DO
+     IF EOF(5) <> 0 THEN
+       EXIT
+     FI
+
+     c = GetD(5)
+     Put(c)
+  OD
+  Close(5)
+
+  PrintE("-----------------------")
+  Print("<PRESS RETURN>")
+  InputB()
+
+
+RETURN
+
+
+
+
+PROC Main()
+  BYTE c=[0],v=[0],running=[1]
+
+  running=1
+
+
+  WHILE running = 1
+  DO
+    Put(125)
+    PrintE("     ACTION8 USER ATTR EDITOR     ")
+    PutE()
+    PrintE("1) List Users")
+    PrintE("2) Edit User")
+    PrintE("3) Quit")
+    PutE()
+    Print("MAIN>> ")
+    c = InputB()
+
+    IF c = 1 THEN
+      ListUsers()
+    ELSEIF c = 2 THEN
+      EditUser()
+    ELSEIF c = 3 THEN
+      running = 0
+    FI
+  OD
+
+  PutE()
+  PrintE("Exit...")
+RETURN
+
