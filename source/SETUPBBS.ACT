@@ -209,6 +209,7 @@ PROC InitMsgBase()
   i = 0
 
   PutE()
+
   PrintE("Creating MSGBASE data and index")
   PrintE("files...")
   PrintE("This may take some time!")
@@ -254,6 +255,40 @@ PROC InitMsgBase()
 RETURN
 
 
+PROC InitMsgTemp()
+  BYTE i=[0],j=[0]
+
+  Print("Init MSG TEMP [0]? ")
+  i = InputB()
+
+  IF i = 0 THEN
+    RETURN
+  FI
+
+  i = 0
+
+  PutE()
+  Print("Initializing MSGTEMP.DAT...")
+
+  Open(5,"D2:MSGTEMP.DAT",8,0)
+
+  FOR i = 0 TO 40
+  DO
+    FOR j = 0 to 40
+    DO
+      PutD(5,'.)
+    OD
+    PutD(5,155)
+  OD
+  PutD(5,158)
+  PutD(5,155)
+
+  Close(5)
+  PrintE("Done!")
+
+RETURN
+
+
 
 PROC InitAtascii()
 
@@ -266,6 +301,9 @@ PROC InitAtascii()
   IF c = 0 THEN
     RETURN
   FI
+
+  PrintE("WARN: Files should be on D1!")
+  PrintE("Copying files not needed!!")
 
   CopyFile("D1:LOGIN.ATA","D2:LOGIN.ATA")
   CopyFile("D1:TITLE.ATA","D2:TITLE.ATA")
@@ -293,6 +331,7 @@ PROC main()
   InitSysInfo()
   InitWall()
   InitMsgBase()
+  InitMsgTemp()
   InitAtascii()
 
   PutE()

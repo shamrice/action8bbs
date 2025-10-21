@@ -1,11 +1,11 @@
 ; Action!8! BBS
 ;
 ; Start Date: 2025-07-11
-; Last update: 2025-09-30
+; Last update: 2025-10-10
 
 BYTE RTS = [$60]
 
-INCLUDE "D1:SYSBBS.ACT"
+;INCLUDE "D1:SYSBBS.ACT"
 
 MODULE
 
@@ -14,14 +14,20 @@ BYTE IMASK=[0]
 BYTE GFXMODE=[0],UCLOG=[0]
 BYTE c=[0],i=[0],v=[0]
 
+BYTE ARRAY lOffset(25)
+CARD ARRAY lSect(25)
+
+
 INCLUDE "D1:NETWORK.ACT"
 INCLUDE "D1:TIME.ACT"
 INCLUDE "D1:FILE.ACT"
 INCLUDE "D1:UTIL.ACT"
 INCLUDE "D1:MSGBASE1.ACT"
+INCLUDE "D1:MSGBASE2.ACT"
 INCLUDE "D1:ACCT1.ACT"
 INCLUDE "D1:ACCTATTR.ACT"
 INCLUDE "D1:WALL.ACT"
+INCLUDE "D1:NEBBSAPI.ACT"
 
 PROC AcceptConn()
   BYTE KB = $02FC
@@ -42,6 +48,7 @@ PROC AcceptConn()
       PrintE("CONNECT")
       IS_CONN = 1
       GFXMODE = 0
+      IGNORE_CONN_CLOSED = 0
       ; reset session timer..
       TSEXP = TS + 1
 
@@ -99,10 +106,10 @@ PROC HandleUserConn()
     UATTR(3)==+1
   FI
 
-  NPrintFile("D2:TITLE.ATA")
+  NPrintFile("D1:TITLE.ATA")
   NGetB()
 
-  NPrintFile("D2:MAINMENU.ATA")
+  NPrintFile("D1:MAINMENU.ATA")
 
   c = 0
 
@@ -116,7 +123,7 @@ PROC HandleUserConn()
     FI
 
     IF c = 'G THEN
-      NPrintFile("D2:LOGOUT.ATA")
+      NPrintFile("D1:LOGOUT.ATA")
       IS_CONN = 0
 
     ELSEIF c = 'C THEN
@@ -141,10 +148,17 @@ PROC HandleUserConn()
       Wall()
 
     ELSEIF c = 'I THEN
-      NPrintFile("D1:INFIL.ATA")
+;      NPutC(155)
+;      NWriteSE("Sorry, no easter egg this time!")
+;      NWriteSE("...ran out of disk space!")
+;      NPutC(155)
+     NPrintFile("D1:INFIL.ATA")
 
     ELSEIF c = '? THEN
-      NPrintFile("D2:MAINMENU.ATA")
+      NPrintFile("D1:MAINMENU.ATA")
+
+    ELSEIF c = 'N THEN
+      NELatest()
 
     ELSEIF c = '# THEN
       IF UATTR(9) = 255 THEN
@@ -162,6 +176,7 @@ RETURN
 PROC Main()
   Put(125)
   PrintE("           ACTION8BBS             ")
+  Close(5)
   Close(FIOCB)
 
   NOpen()
@@ -169,6 +184,7 @@ PROC Main()
   IF ERRNO <> 1 THEN
     NCmd('C)
     PrintE("ERROR opening connection!")
+    PrintF("ERROR: %B%E", ERRNO)
     RETURN
   FI
 

@@ -176,7 +176,7 @@ BYTE FUNC DoLogin()
   c = 0
   new = 0
 
-  NPrintFile("D2:LOGIN.ATA")
+  NPrintFile("D1:LOGIN.ATA")
 
   WHILE try < 3 AND IS_CONN = 1
   DO

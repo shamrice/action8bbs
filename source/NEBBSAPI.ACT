@@ -1,0 +1,188 @@
+MODULE
+
+;TODO: Can probably kludge the
+;NETWORK lib to take a DUNIT
+;for open/close at least...
+
+;TODO : Use same print method on
+; PrintFile PROC to fix the weird
+; [MORE] placement.
+
+PROC NEStatus()
+  DDEVIC = $71
+  DUNIT = $04
+  DCOMND = 'S
+  DSTATS = $40
+  DBUF = DVSTATADDR
+  DTIMLO = $0F
+  DBYT = 4
+  DAUX = 0
+  siov()
+RETURN
+
+
+PROC NEOpen(BYTE idx)
+  BYTE ARRAY ds(255)
+  BYTE ARRAY sId(2)
+
+  FOR i = 0 TO 254
+  DO
+    ds(i) = 0
+  OD
+
+  SCopy(ds,"N4:HTTP://192.168.1.148:3000/bbs/fuji/63/latest/")
+;  SCopy(ds,"N4:HTTP://192.168.1.118:3000/bbs/fuji/16/latest/")
+
+  StrB(idx,sId)
+  SAssign(ds,sId,49,50)
+
+;  PRINTF("DS=%S%E",DS)
+
+  DDEVIC = $71
+  DUNIT = $04
+  DCOMND = 'O
+  DSTATS = $80
+  DBUF = ds
+  DTIMLO = $0F
+  DBYT = 256
+  DAUX1 = $0C
+  DAUX2 = $02
+  siov()
+RETURN
+
+
+PROC NEClose()
+  DDEVIC = $71
+  DUNIT = $04
+  DCOMND = 'C
+  DSTATS = $00
+  DBUF = 0
+  DTIMLO = $0F
+  DBYT = 0
+  DAUX = 0
+  siov()
+RETURN
+
+CARD FUNC NERead(BYTE ARRAY buff)
+  CARD len=[0]
+
+  IF BYTESWAITING > 38 THEN
+    BYTESWAITING = 38
+  FI
+
+  len = BYTESWAITING
+
+  DDEVIC = $71
+  DUNIT = $04
+  DSTATS = $40
+  DCOMND = 'R
+  DBUF = buff
+  DTIMLO = $1F
+  DBYT = len
+  DAUX = len
+  siov()
+
+RETURN(len)
+
+
+
+PROC NELatest()
+  BYTE lines=[0],maxI=[0]
+  CARD len=[0]
+  lines=0
+  len=0
+  maxI=0
+  c=9
+  v=0
+
+  BYTESWAITING = 0
+  NPutC(125)
+
+  ;supress warning and write skipping
+  ;bc conn is closed as flag gets
+  ;flipped to conn=false on 2nd
+  ;N device connection.
+  IGNORE_CONN_CLOSED = 1
+
+  DO
+    NPutC(125)
+    NWriteSE("        NE BBS LATEST 10 MSGS       ")
+
+    NEOpen(c)
+    lines=0
+    DO
+      NEStatus()
+
+      PrintF("OPEN STATUS=%B%E",DSTATS)
+
+      IF BYTESWAITING > 0 THEN
+        len = NERead(RXBUFF)
+;        PrintF("READ LEN=%B%E",len)
+        ;len==-1
+        maxI = 0
+        FOR i = 0 TO len
+        DO
+          IF RXBUFF(i) = 155 THEN
+            lines==+1
+            maxI = i
+            ;PrintF("LINE=%B%E",lines)
+          FI
+        OD
+
+        IF lines > 17 THEN
+          NWrite(RXBUFF,maxI)
+
+          NPutC(155)
+          NWriteS("[MORE]")
+          NGetB()
+          NSB(0)=126
+          NSB(1)=126
+          NSB(2)=126
+          NSB(3)=126
+          NSB(4)=126
+          NSB(5)=126
+          NWrite(NSB,6)
+          lines=0
+          v = 0
+          maxI==+1 ; get past NL
+          FOR i = maxI TO len
+          DO
+            NSB(v) = RXBUFF(i)
+            v==+1
+          OD
+          NWrite(NSB,v-1)
+        ELSE
+          NWrite(RXBUFF,len)
+        FI
+
+      ELSE
+        EXIT
+      FI
+    OD
+    NEClose()
+
+    IF c > 0 THEN
+      NWriteS("RETURN for Next or EXit")
+
+      v = NGetB()
+      IF v = 'x OR v = 'X THEN
+        NPutC(155)
+        EXIT
+      FI
+
+      c==-1
+
+    ELSE
+      NWriteSE("END OF LATEST 10 MSGS")
+      EXIT
+    FI
+
+  OD
+
+  IGNORE_CONN_CLOSED = 0
+
+  NStatus() ; reset is_conn ptr
+
+  NPutC(155)
+
+RETURN

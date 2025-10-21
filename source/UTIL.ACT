@@ -71,10 +71,18 @@ PROC NPrintFile(BYTE ARRAY file)
 
       IF l > 21 THEN
         IF c <> 'C THEN
-          NWriteS("[MORE or Continuous]")
+          NWriteS("[MORE, Continuous, Exit]")
           c = NGetB()
           c = UCase(c)
-          NPutC(155)
+          FOR v = 0 TO 23
+          DO
+            NSB(v) = 126
+          OD
+          NWrite(NSB,24)
+          IF c = 'X THEN
+            NPutC(155)
+            EXIT
+          FI
         FI
         l = 0
       ELSE
@@ -85,8 +93,6 @@ PROC NPrintFile(BYTE ARRAY file)
 ;          TRIP = 0
 ;          PACTL = PACTL % 1
           IF NSB(0) = 3 THEN
-;            NPutC(155)
-;            PrintE("^C FOUND")
             EXIT
           FI
         FI
