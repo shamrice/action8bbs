@@ -2,7 +2,11 @@
 ; Action8Run#5->#6 Migrator Tool
 ;
 ; Created: 2025-09-19
-; Updated: 2025-09-19
+; Updated: 2025-12-16
+;
+; Latest update can take a run v6+
+; USER.DAT as input to recreate
+; the USERS.ATR file fresh
 ;
 ; Reads in USERS.DAT file from vers
 ; older than Run#6 and converts it
@@ -26,6 +30,7 @@ BYTE RTS = [$60]
 PROC Main()
 
   BYTE i=[0],o=[0],inp=[0],year=[0]
+  BYTE uDatVer=[0]
   CARD s=[0]
   BYTE ARRAY t(40)
 
@@ -34,6 +39,7 @@ PROC Main()
   s = 0
   o = 0
   year = 0
+  uDatVer = 0
 
   Close(4)
   Close(5)
@@ -46,6 +52,15 @@ PROC Main()
   i = InputB()
   PutE()
   IF i <> 1 THEN
+    PrintE("Stopping here.")
+    RETURN
+  FI
+
+  Print("USER.DAT format v5 or v6+? ")
+  uDatVer = InputB()
+  PutE()
+  IF uDatVer <> 5 AND uDatVer <> 6 THEN
+    PrintF("Invalid version: %B : Valid: 5 or 6%E",uDatVer)
     PrintE("Stopping here.")
     RETURN
   FI
@@ -85,6 +100,11 @@ PROC Main()
       FI
     OD
     PutE()
+
+    IF uDatVer = 6 THEN
+      InputCD(6)
+      InputBD(6)
+    FI
 
     IF t(0) = 32 OR t(0) = 155 THEN
       PrintE("End of user list.")
