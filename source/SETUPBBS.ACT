@@ -321,6 +321,9 @@ RETURN
 
 PROC main()
 
+  Close(5)
+  Close(6)
+
   Put(125)
   PutE()
   PrintE("  ACTION8 BBS  SETUP             ")

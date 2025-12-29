@@ -1,0 +1,98 @@
+;
+; Hi Msg Test Harness
+;
+; Used to test different scenarios
+; that will set the last read himsg
+;
+; Created: 2025-10-22
+; Updated: 2025-10-22
+;
+
+BYTE FUNC GetDispId(BYTE id)
+
+  IF id = 25 THEN
+    RETURN(50)
+  FI
+RETURN (id)
+
+
+PROC Test(BYTE id,hiId,attr)
+
+  BYTE isNew=[0],c=[0]
+  isNew=0
+
+
+  IF id <= hiId THEN
+    IF id > attr THEN
+      isNew=1
+    ELSEIF id < attr AND attr > hiId THEN
+      isNew=1
+    FI
+  ;ELSEIF id = 0 THEN
+  ;  c = GetDispId(24)
+  ;  IF c = 50 THEN
+  ;    isNew = 1
+  ;  FI
+  FI
+
+
+  IF isNew = 1 THEN
+    PrintF("NEW: id:%B attr:%B hi:%B%E",id,attr,hiId)
+  ELSE
+    PrintF("OLD: id:%B attr:%B hi:%B%E",id,attr,hiId)
+  FI
+
+RETURN
+
+
+PROC TestOld(BYTE id,hiId,attr)
+
+  BYTE isNew=[0],c=[0]
+  isNew=0
+
+
+  IF id > attr AND id <= hiId THEN
+    isNew = 1
+  ELSEIF id = 0 THEN
+    c = GetDispId(id)
+
+    IF c = 50 THEN
+      isNew = 1
+    FI
+  FI
+
+  IF isNew = 1 THEN
+    PrintF("NEW: id:%B attr:%B hi:%B%E",id,attr,hiId)
+  ELSE
+    PrintF("OLD: id:%B attr:%B hi:%B%E",id,attr,hiId)
+  FI
+
+RETURN
+
+
+
+PROC Main()
+  BYTE id=[0],hi=[0],attr=[0]
+
+  DO
+    Print("HIMSG ID: ")
+    hi = InputB()
+
+    IF hi = 255 THEN
+      EXIT
+    FI
+
+    Print(" ATTR ID: ")
+    attr = InputB()
+
+    PutE()
+
+    FOR id = 0 TO 49
+    DO
+      Test(id,hi,attr)
+    OD
+
+    PrintE("----------------------------")
+  OD
+
+RETURN

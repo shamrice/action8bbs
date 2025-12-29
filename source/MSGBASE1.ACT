@@ -3,6 +3,7 @@ MODULE
 BYTE MO=[0]
 BYTE HIMSGID=[0]
 BYTE MBROLL=[0]
+BYTE LASTPID=[0]
 
 CARD MS=[0]
 
@@ -10,6 +11,8 @@ BYTE ARRAY MBFNAME(0)="D2:MSGBASE.DAT"
 BYTE ARRAY MIFNAME(0)="D2:MSGBASE.IDX"
 BYTE ARRAY MHFNAME(0)="D2:MSGHI.DAT"
 BYTE ARRAY MTEMPNAME(0)="D2:MSGTEMP.DAT"
+BYTE ARRAY PREVSUBJ(30)
+BYTE ARRAY PREVFROM(30)
 
 PROC SetHIMSG()
   Open(6,MHFNAME,4,0)
@@ -84,58 +87,114 @@ RETURN (id)
 
 PROC ViewMsg(BYTE id)
 
-  BYTE c=[0],l=[0]
+  BYTE c=[0],l=[0],pId=[0],pSubjI=[0]
+  BYTE isMore=[0]
+
+  isMore=0
 
   IF id >= 50 THEN
     PrintF("Id too high: %B%E",id)
     id = HIMSGID
   FI
 
+
   ; keep track of user himsgid
-  IF id > UATTR(5) AND id <= HIMSGID THEN
-    PrintF("New UHIMSG=%B%E",id)
-    UATTR(5) = id
-  ELSEIF id = 0 THEN
-    c = GetDispId(id)
-    IF c = 50 THEN
-      PrintE("50 found.New UHIMSG")
+  IF id <= HIMSGID THEN
+    IF id > UATTR(5) THEN
+      PrintF("IF New UHIMSG=%B%E",id)
+      UATTR(5) = id
+    ELSEIF id < UATTR(5) AND UATTR(5) > HIMSGID THEN
+      PrintF("ELSEIF New UHIMSG=%B%E",id)
       UATTR(5) = id
     FI
   FI
 
   SetMsgCoords(id)
 
-  PrintF("View ID: %B%E",id)
   c=0
   i=0
   l=1
+  pSubjI=0
+  pId=id
+
+  FOR i = 0 TO 29
+  DO
+    PREVSUBJ(i)=32
+    PREVFROM(i)=32
+  OD
+
+  i=0
 
   Close(5)
   Open(5,MBFNAME,12,0)
   Point(5,MS,MO)
 
+  ;default to no parentid if OOB
+  pId = GetD(5)
+  IF pId > 49 THEN
+    pId = id
+  FI
+
+  IF pId > id AND pId <= HIMSGID THEN
+    PrintF("pId %B has been cycled out%E",pId)
+    pId = id
+  FI
+
+  PrintF("View ID:%B PID:%B HI:%B%E",id,pId,HIMSGID)
+
+  LASTPID=pId
+
   NPutC(125)
   id = GetDispId(id)
+  pId = GetDispId(pId)
 
   NWriteS("  ID: ")
   StrB(id,RXBUFF)
   NWriteS(RXBUFF)
 
   IF MBROLL = 1 THEN
-    NWriteSE("/50+")
+    NWriteS("/50+")
   ELSE
     NPutC('/)
     StrB(HIMSGID,RXBUFF)
-    NWriteSE(RXBUFF)
+    NWriteS(RXBUFF)
+  FI
+
+  ; display parent id if reply
+  IF pId <> id THEN
+    NWriteS(" [Reply to: #")
+    StrB(pId,RXBUFF)
+    NWriteS(RXBUFF)
+    NWriteSE("]")
+  ELSE
+    NPutC(155)
   FI
 
   WHILE EOF(5) = 0
   DO
     RXBUFF(i) = GetD(5)
+
     IF RXBUFF(i) = 158 THEN
       EXIT
     ELSEIF RXBUFF(i) = 155 THEN
       l==+1
+    FI
+
+    ; keep track of subj for replies
+    ; there's def a bug here with the
+    ; pSubjI var....
+    IF isMore=0 AND (l=2 OR l=4) THEN
+      pSubjI==+1
+
+      IF pSubjI > 7 AND pSubjI < 38 THEN
+        IF l = 2 THEN
+          PREVFROM(pSubjI - 8) = RXBUFF(i)
+        ELSE
+          PREVSUBJ(pSubjI - 8) = RXBUFF(i)
+        FI
+      FI
+    ELSE
+      pSubjI = 0
     FI
 
     i==+1
@@ -144,6 +203,8 @@ PROC ViewMsg(BYTE id)
       NWrite(RXBUFF,i)
       i = 0
       IF l > 18 THEN
+        isMore = 1
+
         NWriteS("[MORE]")
         NGetB()
         NSB(0) = 126
@@ -173,11 +234,19 @@ PROC ViewMsg(BYTE id)
   OD
   NWrite(RXBUFF,i)
 
+
+  Put(')
+  FOR i = 0 TO 29
+  DO
+    Put(PREVSUBJ(i))
+  OD
+  Put(')
+  PutE()
   Close(5)
 
   IF UATTR(8) = 0 THEN
     NWriteSE("_______________________________________")
-    NWriteSE(" Next Msg  Jump  Reply  Exit  ?Help")
+    NWriteSE(" Next Jump Post Reply Exit ?Help")
   FI
 
   NPutC(155)

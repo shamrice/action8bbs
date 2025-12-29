@@ -98,11 +98,15 @@ PROC NELatest()
   BYTESWAITING = 0
   NPutC(125)
 
+  PrintE("NEBBS Last 10 Enter")
+
   ;supress warning and write skipping
   ;bc conn is closed as flag gets
   ;flipped to conn=false on 2nd
   ;N device connection.
   IGNORE_CONN_CLOSED = 1
+
+  NEClose() ; make sure closed
 
   DO
     NPutC(125)
@@ -113,7 +117,17 @@ PROC NELatest()
     DO
       NEStatus()
 
-      PrintF("OPEN STATUS=%B%E",DSTATS)
+      IF DSTATS <> 1 THEN
+        PrintF("ERROR>> NEBBS STATUS=%B%E",DSTATS)
+
+        NPutC(155)
+        NWriteSE("ERROR>> Failed to contact NEBBS!")
+
+        NEClose()
+        IGNORE_CONN_CLOSED=0
+        NStatus()
+        RETURN
+      FI
 
       IF BYTESWAITING > 0 THEN
         len = NERead(RXBUFF)
@@ -185,4 +199,7 @@ PROC NELatest()
 
   NPutC(155)
 
+  PrintE("NEBBS Last 10 Exit")
 RETURN
+
+

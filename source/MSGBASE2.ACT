@@ -271,7 +271,7 @@ BYTE FUNC HEditCmd()
 RETURN(status)
 
 
-PROC PostMsg()
+PROC PostMsg(BYTE parentId)
   BYTE nMsg=[0],tOffset=[0],sOffset=[0]
   BYTE maxI=[0],k=[0],status=[0],skip=[0]
   CARD tSect=[0],sSect=[0]
@@ -286,6 +286,10 @@ PROC PostMsg()
   IF nMsg > 49 THEN
     nMsg = 0
     MBROLL = 1
+  FI
+
+  IF parentId > 49 THEN
+    parentId = 255
   FI
 
   Close(5)
@@ -312,36 +316,121 @@ PROC PostMsg()
   NPutC(125)
 
   SCopy(RXBUFF, "  TO: ")
-  NWriteS(RXBUFF)
   PrintD(5, RXBUFF)
 
-  maxI = GetInp()
+  IF parentId = 255 THEN
 
-  IF RXBUFF(0) = 32 THEN
-    PrintDE(5, "ALL")
-    maxI = 2
+    NWriteS(RXBUFF)
+
+    maxI = GetInp()
+
+    IF RXBUFF(0) = 32 THEN
+      PrintDE(5, "ALL")
+      maxI = 2
+    ELSE
+      IF maxI > 29 THEN maxI = 29 FI
+      FOR i = 0 TO maxI
+      DO
+        c = UCase(RXBUFF(i))
+        PutD(5, c)
+      OD
+    FI
   ELSE
-    IF maxI > 29 THEN maxI = 29 FI
+    ; auto fill to field on replies
+
+    maxI = 0
+    i = 30
+    WHILE i > 0
+    DO
+      i==-1
+      Put(PREVFROM(i))
+      IF PREVFROM(i) <> 32 THEN
+        maxI = i+1
+        PrintF("%ETO MAXI=%B%E",maxI)
+        EXIT
+      FI
+    OD
+    Put(155)
+    Print("PREV FROM: ")
     FOR i = 0 TO maxI
     DO
-      c = UCase(RXBUFF(i))
-      PutD(5, c)
+      Put(PREVFROM(i))
+      PutD(5,PREVFROM(i))
     OD
-    PutD(5, 155)
   FI
 
+  PutD(5, 155)
+
   SCopy(RXBUFF, "SUBJ: ")
-  NWriteS(RXBUFF)
   PrintD(5,RXBUFF)
 
-  maxI = GetInp()
+  IF parentId <> 255 THEN
+    NWriteS("Use prev subject [y]? ")
+    maxI = NGetB()
+    NPutC(155) ;might be wrong place
 
-  IF maxI > 29 THEN maxI = 29 FI
+  FI
 
-  FOR i = 0 TO maxI
-  DO
-    PutD(5, RXBUFF(i))
-  OD
+  IF parentId = 255 OR (maxI = 'n OR maxI = 'N) THEN
+
+    NWriteS(RXBUFF)
+
+    maxI = GetInp()
+
+    IF maxI > 29 THEN maxI = 29 FI
+
+    FOR i = 0 TO maxI
+    DO
+      PutD(5, RXBUFF(i))
+    OD
+  ELSE
+
+    PrintF("%ESUBJ:")
+    maxI = 0
+    i = 30
+    WHILE i > 0
+    DO
+      i==-1
+      Put(PREVSUBJ(i))
+      IF PREVSUBJ(i) <> 32 THEN
+        maxI = i+1 ;seems wrong
+        PrintF("%ESUBJ MAX: %B%E",maxI)
+        EXIT
+      FI
+    OD
+    Put(155)
+
+    IF PREVSUBJ(0)<>'R OR PREVSUBJ(1)<>'E OR PREVSUBJ(2)<>': THEN
+
+      maxI==+3
+      IF maxI > 29 THEN maxI = 29 FI
+
+      RXBUFF(0)='R
+      RXBUFF(1)='E
+      RXBUFF(2)=':
+
+      FOR i = 0 TO maxI
+      DO
+        RXBUFF(i+3)=PREVSUBJ(i)
+      OD
+      FOR i = 0 TO maxI
+      DO
+        PREVSUBJ(i)=RXBUFF(i)
+      OD
+    ELSE
+      PrintE("PREV SUBJ MATCHES RE:??")
+
+    FI
+
+    FOR i = 0 TO maxI
+    DO
+      Put(PREVSUBJ(i))
+      PutD(5, PREVSUBJ(i))
+    OD
+  FI
+
+  NPutC(155)
+
   PutD(5,155)
   PutD(5,155)
   SCopy(RXBUFF, "----+----")
@@ -413,9 +502,14 @@ PROC PostMsg()
     Open(6,MBFNAME,12,0)
     Point(6,MS,MO)
 
+    Point(5,sSect,sOffset)
+
+    ; mark parent id as first byte
+    PutD(6,parentId)
+
     ;copy headers to msg base
     maxI = 0
-    Point(5,sSect,sOffset)
+
     DO
       c = GetD(5)
       PutD(6,c)
@@ -574,7 +668,11 @@ PROC ReadMsgs()
       FI
 
     ELSEIF c = 'R THEN
-      PostMsg()
+      PostMsg(n)
+    ELSEIF c = 'P THEN
+      PostMsg(255) ;no parent
+    ELSEIF c = 'T THEN
+      n = LASTPID
     ELSEIF c = 'X THEN
       EXIT
     ELSEIF c = 'A THEN

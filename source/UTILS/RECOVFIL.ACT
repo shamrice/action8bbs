@@ -1,0 +1,218 @@
+
+BYTE ARRAY offset1(20),offset2(20)
+CARD ARRAY sect1(20),sect2(20)
+
+
+PROC PrintSOInfo()
+
+  BYTE i=[0],o1=[0],o2=[0],p=[0]
+  CARD s1=[0],s2=[0]
+  i = 0
+  o1 = 0
+  s1 = 0
+  o2 = 0
+  s2 = 0
+  p = 0
+
+  FOR i = 0 TO 19
+  DO
+    s1 = sect1(i)
+    o1 = offset1(i)
+    s2 = sect2(i)
+    o2 = offset2(i)
+
+    PrintF("%B : %U,%B  %U,%B%E",i,s1,o1,s2,o2)
+
+  OD
+
+  Print("Send to printer?[0] ")
+  p = InputB()
+  PutE()
+
+  IF p <> 1 THEN RETURN FI
+
+  Close(5)
+  Open(5,"P:",8,0)
+
+  FOR i = 0 TO 19
+  DO
+    s1 = sect1(i)
+    o1 = offset1(i)
+    s2 = sect2(i)
+    o2 = offset2(i)
+
+    PrintBD(5, i)
+    PutD(5,32)
+    PrintCD(5,s1)
+    PutD(5,',)
+    PrintBD(5,o1)
+    PutD(5,32)
+    PutD(5,32)
+    PrintCD(5,s2)
+    PutD(5,',)
+    PrintBD(5,o2)
+    PutD(5,155)
+  OD
+
+  Close(5)
+
+RETURN
+
+
+PROC PrintFile(BYTE ARRAY f)
+
+
+  BYTE i=[0],c=[0]
+
+  i=0
+  c=0
+
+  PrintE("Opening file...")
+
+  Close(5)
+  Open(5,f,4,0)
+
+  DO
+    IF EOF(5) <> 0 THEN
+      PrintE("***EOF***")
+      EXIT
+    FI
+
+    c = GetD(5)
+    PrintF("%C",c)
+
+  OD
+
+  PutE()
+  PrintE("Close file.")
+  Close(5)
+
+  PrintE("Done.")
+RETURN
+
+
+PROC SetOrigValues()
+  BYTE i=[0],c=[0],n=[0],o=[0],done=[0]
+  CARD s=[0]
+
+  done=0
+  i=0
+  c=0
+  n=0
+  s=0
+  o=0
+
+  PrintE("Opening file...")
+
+  Close(5)
+  Open(5,"D2:USERS.DAT",4,0)
+
+  WHILE done = 0
+  DO
+    IF EOF(5) <> 0 THEN
+      PrintE("***EOF***")
+      EXIT
+    FI
+
+    FOR n = 0 TO 19
+    DO
+
+      c = GetD(5)
+      PrintF("%C",c)
+
+      IF c = 155 AND n = 0 THEN
+        done = 1
+        EXIT
+      FI
+
+    OD
+
+    PutE()
+    IF done THEN EXIT FI
+
+    GetD(5)
+    s = InputCD(5)
+    o = InputBD(5)
+
+    PrintF("%B : %U,%B%E",i,s,o)
+    sect1(i) = s
+    offset1(i) = o
+    i==+1
+
+;    InputB()
+
+    IF i = 20 THEN EXIT FI
+  OD
+
+  PutE()
+  PrintE("Close file.")
+  Close(5)
+
+RETURN
+
+
+PROC SetCurValues()
+
+  BYTE c=[0],o=[0],i=[0],n=[0]
+  CARD s=[0]
+  c=0
+  i=0
+  o=0
+  s=0
+  n=0
+
+  Close(5)
+  Open(5,"D2:USERS.ATR",12,0)
+
+  DO
+    Note(5,@s,@o)
+    PrintF("%B: %U,%B%E",i,s,o)
+    sect2(i) = s
+    offset2(i) = o
+
+    i==+1
+    IF i = 20 THEN EXIT FI
+
+    FOR n = 0 TO 31
+    DO
+      c = GetD(5)
+      PrintF("%C",c)
+    OD
+    GetD(5)
+    PutE()
+
+    IF EOF(5) <> 0 THEN EXIT FI
+  OD
+
+
+
+  Close(5)
+
+
+RETURN
+
+
+
+
+PROC Main()
+
+  BYTE i=[0]
+
+  PrintE("Resetting S/O arrays..")
+  FOR i = 0 TO 19
+  DO
+    sect1(i)=0
+    sect2(i)=0
+    offset1(i)=0
+    offset2(i)=0
+  OD
+
+
+  SetOrigValues()
+  SetCurValues()
+  PrintSOInfo()
+
+ ; PrintFile("D2:USERS.DAT")
+
+RETURN
+

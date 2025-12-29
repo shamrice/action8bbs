@@ -1,0 +1,57 @@
+
+;INCLUDE "D3:SYS.ACT"
+
+PROC PrintFileLoc(BYTE ARRAY f)
+
+  BYTE o=[0]
+  CARD s=[0]
+
+  o=0
+  s=0
+
+  Close(5)
+  Open(5,f,12,0)
+  Note(5,@s,@o)
+  PrintF("%S :: %U,%B%E",f,s,o)
+
+  Close(5)
+RETURN
+
+
+PROC Main()
+
+  BYTE p=[0]
+  p=0
+
+  Print("Send to printer?[0] ")
+  p = InputB()
+  PutE()
+
+  IF p THEN
+    PrintE("Sending to printer...")
+    Close(6)
+    Open(6,"P:",8,0)
+    device=6
+  FI
+
+  PrintFileLoc("D2:USERS.LST")
+  PrintFileLoc("D2:USERS.DAT")
+  PrintFileLoc("D2:CALL.LOG")
+  PrintFileLoc("D2:SYSINFO.TXT")
+  PrintFileLoc("D2:WALL.DAT")
+  PrintFileLoc("D2:MSGBASE.DAT")
+  PrintFileLoc("D2:MSGBASE.IDX")
+  PrintFileLoc("D2:MSGHI.DAT")
+  PrintFileLoc("D2:USERATR.OLD")
+  PrintFileLoc("D2:MSGTEMP.DAT")
+  PrintFileLoc("D2:CALL.OLD")
+  PrintFileLoc("D2:USERS.NEW")
+  PrintFileLoc("D2:USERS.ATR")
+  PrintFileLoc("D2:USERS.OLD")
+
+  IF p THEN
+    Close(6)
+    device=0
+  FI
+
+RETURN

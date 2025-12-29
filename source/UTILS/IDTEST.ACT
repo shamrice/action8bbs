@@ -1,0 +1,39 @@
+;
+;Test program to generate display
+;msg id vs the actual msg id.
+;
+
+
+PROC Main()
+
+  BYTE max=[20],count=[50],cur=[20]
+  BYTE disp=[0],i=[0]
+
+  DO
+    IF max > cur THEN
+      disp=count-(max-cur)
+    ELSE
+      disp=cur-max
+    FI
+
+    PrintF("%B %B%E",disp,cur)
+
+    cur==-1
+
+    IF cur = 255 THEN
+      cur = 49
+    FI
+
+    IF cur = max THEN
+      EXIT
+    FI
+
+    i==+1
+
+    IF i = 20 THEN
+      InputB()
+      i = 0
+    FI
+  OD
+
+RETURN

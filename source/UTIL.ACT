@@ -13,6 +13,9 @@ RETURN (ch)
 
 ; Needs to be in UTIL as requires
 ; both TIME and NETWORK...
+;
+; 2025-10-24: swiched from RXBUFF to
+;             NSB.. may cause issues
 BYTE FUNC NGetB()
   nv = 0
   nc = 0
@@ -20,14 +23,14 @@ BYTE FUNC NGetB()
   DO
     NStatus()
     IF BYTESWAITING > 0 THEN
-      NRead(RXBUFF, 1)
+      NRead(NSB, 1)
       NGetStatus()
       IF ERRNO <> 1 THEN
         PrintF("Read err: %B%E",ERRNO)
         IS_CONN = 0
         RETURN(nc)
       FI
-      nc = RXBUFF(0)
+      nc = NSB(0)
 ;     TRIP = 0
 ;     PACTL = PACTL % 1
       nv = 1

@@ -1,0 +1,53 @@
+
+PROC AppendCallLog()
+
+  BYTE i=[0]
+  BYTE ARRAY l="2025/12/25 02:30 SLACKER    "
+
+  PrintE("Appending call log...")
+
+  Open(5,"D2:CALL.LOG",9,0)
+
+  FOR i = 0 TO 27
+  DO
+    PutD(5,l(i))
+  OD
+  PutD(5,155)
+  Close(5)
+
+RETURN
+
+
+
+PROC SaveUAttr()
+
+  BYTE i=[0]
+
+  PrintE("Saving user attributes..")
+  Open(5,"D2:USERS.ATR",12,0)
+  Point(5,646,33)
+
+  FOR i = 0 TO 31
+  DO
+    PutD(5, 0)
+  OD
+  Close(5)
+RETURN
+
+
+
+PROC Main()
+
+  BYTE i=[0]
+  CARD s=[0]
+  s=73
+
+  FOR i = 0 TO 200
+  DO
+    s==+1
+    PrintF("i=%B :: sect: %U%E",i,s)
+    AppendCallLog()
+    SaveUAttr()
+  OD
+
+RETURN

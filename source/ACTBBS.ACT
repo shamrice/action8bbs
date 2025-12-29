@@ -1,7 +1,7 @@
 ; Action!8! BBS
 ;
 ; Start Date: 2025-07-11
-; Last update: 2025-10-10
+; Last update: 2025-10-24
 
 BYTE RTS = [$60]
 
@@ -130,7 +130,7 @@ PROC HandleUserConn()
       NPrintFile("D2:CALL.LOG")
 
     ELSEIF c = 'P THEN
-      PostMsg()
+      PostMsg(255) ;255 = no parent
 
     ELSEIF c = 'R THEN
       ReadMsgs()
@@ -164,6 +164,7 @@ PROC HandleUserConn()
       IF UATTR(9) = 255 THEN
         IS_CONN = 0
         IMASK = '#
+        PrintE("WARN>> Server shutdown by user!")
       FI
     ELSE
       NWriteSE("Press ? for help")
