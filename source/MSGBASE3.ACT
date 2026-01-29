@@ -1,0 +1,440 @@
+
+
+PROC PostMsg(BYTE parentId)
+  BYTE nMsg=[0],tOffset=[0],sOffset=[0]
+  BYTE maxI=[0],k=[0],status=[0],skip=[0]
+  CARD tSect=[0],sSect=[0]
+  BYTE ARRAY nl(2)
+  skip=0
+  status=0
+  maxI=0
+  sOffset=0
+  sSect=0
+
+  nMsg = HIMSGID + 1
+  IF nMsg > 49 THEN
+    nMsg = 0
+    MBROLL = 1
+  FI
+
+  IF parentId > 49 THEN
+    parentId = 255
+  FI
+
+  Close(5)
+  Open(5,MTEMPNAME,12,0)
+
+  Note(5,@sSect,@sOffset)
+
+  PrintD(5, "DATE:")
+  NGetDT()
+  FOR i = 0 TO 16
+  DO
+    PutD(5, RXBUFF(i))
+  OD
+  PutD(5, 155)
+
+  PrintD(5, "FROM: ")
+
+  FOR i = 0 TO 9
+  DO
+    PutD(5, UNAME(i))
+  OD
+  PutD(5,155)
+
+  NPutC(125)
+
+  SCopy(RXBUFF, "  TO: ")
+  PrintD(5, RXBUFF)
+
+  IF parentId = 255 THEN
+
+    NWriteS(RXBUFF)
+
+    maxI = GetInp()
+
+    IF RXBUFF(0) = 32 THEN
+      PrintD(5, "ALL")
+      maxI = 2
+    ELSE
+      IF maxI > 29 THEN maxI = 29 FI
+      FOR i = 0 TO maxI
+      DO
+        c = UCase(RXBUFF(i))
+        PutD(5, c)
+      OD
+    FI
+  ELSE
+    ; auto fill to field on replies
+
+    maxI = 0
+    i = 30
+    WHILE i > 0
+    DO
+      i==-1
+      Put(PREVFROM(i))
+      IF PREVFROM(i) <> 32 THEN
+        maxI = i+1
+        PrintF("%ETO MAXI=%B%E",maxI)
+        EXIT
+      FI
+    OD
+    Put(155)
+    Print("PREV FROM: ")
+    FOR i = 0 TO maxI
+    DO
+      Put(PREVFROM(i))
+      PutD(5,PREVFROM(i))
+    OD
+  FI
+
+  PutD(5, 155)
+
+  SCopy(RXBUFF, "SUBJ: ")
+  PrintD(5,RXBUFF)
+  PrintF("DISK: %S%E",RXBUFF)
+
+  IF parentId <> 255 THEN
+    NWriteS("Use prev subject [y]? ")
+    maxI = NGetB()
+    NPutC(155) ;might be wrong place
+
+  FI
+
+  IF parentId = 255 OR (maxI = 'n OR maxI = 'N) THEN
+    PrintE("NOT A REPLY")
+    NWriteS(RXBUFF)
+
+    maxI = GetInp()
+
+    IF maxI > 29 THEN maxI = 29 FI
+    PrintF("MAXI=%B%E",maxI)
+    FOR i = 0 TO maxI
+    DO
+      Put(RXBUFF(i))
+      PutD(5, RXBUFF(i))
+    OD
+  ELSE
+
+    PrintF("%ESUBJ:")
+    maxI = 0
+    i = 30
+    WHILE i > 0
+    DO
+      i==-1
+      Put(PREVSUBJ(i))
+      IF PREVSUBJ(i) <> 32 THEN
+        maxI = i+1 ;seems wrong
+        PrintF("%ESUBJ MAX: %B%E",maxI)
+        EXIT
+      FI
+    OD
+    Put(155)
+
+    IF PREVSUBJ(0)<>'R OR PREVSUBJ(1)<>'E OR PREVSUBJ(2)<>': THEN
+
+      maxI==+3
+      IF maxI > 29 THEN maxI = 29 FI
+
+      RXBUFF(0)='R
+      RXBUFF(1)='E
+      RXBUFF(2)=':
+
+      FOR i = 0 TO maxI
+      DO
+        RXBUFF(i+3)=PREVSUBJ(i)
+      OD
+      FOR i = 0 TO maxI
+      DO
+        PREVSUBJ(i)=RXBUFF(i)
+      OD
+    ELSE
+      PrintE("PREV SUBJ MATCHES RE:??")
+
+    FI
+
+    FOR i = 0 TO maxI
+    DO
+      Put(PREVSUBJ(i))
+      PutD(5, PREVSUBJ(i))
+    OD
+  FI
+
+;  NPutC(155)
+
+  PutD(5,155)
+  PutD(5,155)
+  SCopy(RXBUFF, "----+----")
+  FOR i = 0 TO 2
+  DO
+    NWriteS(RXBUFF)
+  OD
+  NWriteSE("----+---")
+
+  maxLine = 0
+
+  Note(5,@tSect,@tOffset)
+  lSect(maxLine) = tSect
+  lOffset(maxLine) = tOffset
+
+  WHILE status = 0 AND IS_CONN = 1
+  DO
+
+    skip = 0
+;    PrintF("j=%B s=%U o=%B%E",j,lSect(j),lOffset(j))
+    maxI = GetInp()
+
+    FOR i = 0 TO 37; maxI
+    DO
+      c = RXBUFF(i)
+      IF i = 0 AND c = '/ THEN
+        skip = 1
+        status = HEditCmd()
+
+        ;not trusting nested EXIT
+        i=37
+      ELSEIF maxLine <= 20 THEN
+        PutD(5, c)
+      FI
+    OD
+
+    IF skip = 0 AND status = 0 AND maxLine > 19 THEN
+      NWriteSE("Max msg lines reached!")
+      skip = 1
+    FI
+    IF skip = 0 THEN
+      PutD(5, 155)
+
+      IF maxLine >= 14 THEN
+        IF (19-maxLine) = 0 THEN
+          NWriteSE("Max msg lines reached!")
+        ELSE
+          StrB((19-maxLine),nl)
+          NWriteS("WARN> ")
+          NWriteS(nl)
+          NWriteSE(" lines left.")
+        FI
+      FI
+      maxLine==+1
+
+      Note(5,@tSect,@tOffset)
+      lSect(maxLine) = tSect
+      lOffset(maxLine) = tOffset
+
+    FI
+
+  OD
+
+  IF status = 2 THEN
+
+    SetMsgCoords(nMsg)
+
+    Close(6)
+    Open(6,MBFNAME,12,0)
+    Point(6,MS,MO)
+
+    Point(5,sSect,sOffset)
+
+    ; mark parent id as first byte
+    PutD(6,parentId)
+
+    ;copy headers to msg base
+    maxI = 0
+
+    DO
+      c = GetD(5)
+      PutD(6,c)
+      IF c = 155 THEN
+        maxI==+1
+        IF maxI = 4 THEN
+          EXIT
+        FI
+      FI
+    OD
+
+    PutD(6,155)
+
+    ; copy msg body to msg base
+    ; removing any trailing spaces
+
+    ;don't save final input line
+    maxLine==-1
+
+    FOR i = 0 TO maxLine
+    DO
+      Point(5,lSect(i),lOffset(i))
+      maxI = 0
+      FOR v = 0 TO 37
+      DO
+        c = GetD(5)
+        RXBUFF(v) = c
+
+        IF c <> 32 THEN
+          maxI = v
+        FI
+      OD
+
+      FOR v = 0 TO maxI
+      DO
+        PutD(6,RXBUFF(v))
+      OD
+      PutD(6,155)
+    OD
+    PutD(6,158)
+
+    Close(6)
+
+    HIMSGID = nMsg
+    NWriteSE("Message posted")
+
+    Open(6,MHFNAME,8,0)
+    PrintBDE(6,HIMSGID)
+    PrintBDE(6,MBROLL)
+    Close(6)
+
+    UATTR(7)==+1
+    IF UATTR(7) = 0 THEN
+      UATTR(6)==+1
+    FI
+    PrintE("New Msg")
+  ELSE
+    NWriteSE("Message canceled")
+  FI
+
+  Close(5)
+  GFXMODE = 0
+
+RETURN
+
+
+; Updates msgid (n) based on
+; dir. If at end of base, prompt
+; to post a msg. If user doesn't
+; return 'magic' OOB 200 to signal
+; to exit msg base
+;
+BYTE FUNC CheckIdOOB(BYTE n,dir)
+  BYTE dId=[0]
+
+  ;TODO:this only works when the base
+  ;     has rolled!
+
+  dId = GetDispId(n)
+  IF (dId = 50 AND dir = 1) OR (dId = 1 AND dir = 0) THEN
+    NPutC(155)
+    NWriteSE("End of messages")
+    NPutC(155)
+    NWriteS("Post a new message? [n]")
+    c = NGetB()
+    IF c = 'y OR c = 'Y THEN
+      PostMsg()
+      RETURN(n)
+    ELSE
+      RETURN(200)
+    FI
+  ELSE
+    IF dir = 1 THEN
+      n==+1
+    ELSE
+      n==-1
+    FI
+  FI
+RETURN(n)
+
+
+PROC ReadMsgs()
+
+  BYTE n=[0],rDraw=[1],dId=[0],dir=[0]
+
+  rDraw=1
+  dir=0
+  dId=0
+
+  PrintF("U=%B Hi=%B%E",UATTR(5),HIMSGID)
+
+  n=UATTR(5)
+  IF n <> HIMSGID THEN
+    dir=1
+  FI
+
+  NPutC(125)
+
+  WHILE IS_CONN = 1
+  DO
+    IF rDraw = 1 THEN
+      ViewMsg(n)
+
+      IF dir = 1 THEN
+        NWriteS("MSGS+> ")
+      ELSE
+        NWriteS("MSGS-> ")
+      FI
+    FI
+    rDraw = 1
+    c = NGetB()
+    c = UCase(c)
+
+    IF c = 'N OR c = 32 OR c = 123 THEN
+      n = CheckIdOOB(n,dir)
+
+    ELSEIF c = '> THEN
+      n = CheckIdOOB(n,1)
+
+    ELSEIF c = '< THEN
+      n = CheckIdOOB(n,0)
+
+    ELSEIF c = 'J THEN
+      NPutC(155)
+      NWriteS("TO MSG ID: ")
+      GetInp()
+
+      n = atob(RXBUFF(0),RXBUFF(1))
+
+      IF n > 50 THEN
+        NWriteSE("ERROR: ID must be <= 50!")
+        TSleep(20)
+        n = HIMSGID
+      ELSE
+        n = GetRealId(n)
+      FI
+
+    ELSEIF c = 'R THEN
+      PostMsg(n)
+    ELSEIF c = 'P THEN
+      PostMsg(255) ;no parent
+    ELSEIF c = 'T THEN
+      n = LASTPID
+    ELSEIF c = 'X THEN
+      EXIT
+    ELSEIF c = 'A THEN
+      ;default redraw
+    ELSEIF c = 'F or c = '+ THEN
+      dir = 1
+      NPutC(155)
+      NWriteSE("FORWARD READ")
+    ELSEIF c = 'B or c = '- THEN
+      dir = 0
+      NPutC(155)
+      NWriteSE("BACKWARD READ")
+    ELSEIF c = '? THEN
+      NPrintFile("D1:MSGHELP.ATA")
+      NGetB()
+    ELSE
+      rDraw = 0
+    FI
+
+    ;keep id in bounds
+    IF n = 50 THEN
+      n = 0
+    ELSEIF n = 255 THEN
+      ;when viewid=0
+      n = 49
+    ELSEIF n = 200 THEN
+      ;special OOB to exit base
+      EXIT
+    FI
+  OD
+
+  NPutC(155)
+RETURN
+
