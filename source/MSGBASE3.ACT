@@ -72,14 +72,13 @@ PROC PostMsg(BYTE parentId)
     WHILE i > 0
     DO
       i==-1
-      Put(PREVFROM(i))
+      ;Put(PREVFROM(i))
       IF PREVFROM(i) <> 32 THEN
-        maxI = i+1
-        PrintF("%ETO MAXI=%B%E",maxI)
+        maxI = i
+        PrintF("%EPREV_FROM_MAX_I:%B%E",maxI)
         EXIT
       FI
     OD
-    Put(155)
     Print("PREV FROM: ")
     FOR i = 0 TO maxI
     DO
@@ -92,44 +91,45 @@ PROC PostMsg(BYTE parentId)
 
   SCopy(RXBUFF, "SUBJ: ")
   PrintD(5,RXBUFF)
-  PrintF("DISK: %S%E",RXBUFF)
 
   IF parentId <> 255 THEN
-    NWriteS("Use prev subject [y]? ")
+    NWriteS("Use previous subject [y]? ")
     maxI = NGetB()
     NPutC(155) ;might be wrong place
 
   FI
 
   IF parentId = 255 OR (maxI = 'n OR maxI = 'N) THEN
-    PrintE("NOT A REPLY")
+    PrintF("%E>>NOT A REPLY%E")
     NWriteS(RXBUFF)
 
     maxI = GetInp()
 
     IF maxI > 29 THEN maxI = 29 FI
-    PrintF("MAXI=%B%E",maxI)
+
+    PrintF("SUBJ_MAX_I:%B%E",maxI)
+    Print("SUBJ:")
+
     FOR i = 0 TO maxI
     DO
       Put(RXBUFF(i))
       PutD(5, RXBUFF(i))
     OD
+    Put(155)
   ELSE
 
-    PrintF("%ESUBJ:")
     maxI = 0
     i = 30
     WHILE i > 0
     DO
       i==-1
-      Put(PREVSUBJ(i))
+      ;Put(PREVSUBJ(i))
       IF PREVSUBJ(i) <> 32 THEN
-        maxI = i+1 ;seems wrong
-        PrintF("%ESUBJ MAX: %B%E",maxI)
+        maxI = i
+        PrintF("%EPREV_SUBJ_MAX_I:%B%E",maxI)
         EXIT
       FI
     OD
-    Put(155)
 
     IF PREVSUBJ(0)<>'R OR PREVSUBJ(1)<>'E OR PREVSUBJ(2)<>': THEN
 
@@ -149,18 +149,19 @@ PROC PostMsg(BYTE parentId)
         PREVSUBJ(i)=RXBUFF(i)
       OD
     ELSE
-      PrintE("PREV SUBJ MATCHES RE:??")
+      PrintE("PREV SUBJ MATCHES /^RE:.*/")
 
     FI
+
+    Print("FINAL_PREV_SUBJ:")
 
     FOR i = 0 TO maxI
     DO
       Put(PREVSUBJ(i))
       PutD(5, PREVSUBJ(i))
     OD
+    Put(155)
   FI
-
-;  NPutC(155)
 
   PutD(5,155)
   PutD(5,155)
@@ -176,6 +177,8 @@ PROC PostMsg(BYTE parentId)
   Note(5,@tSect,@tOffset)
   lSect(maxLine) = tSect
   lOffset(maxLine) = tOffset
+
+  ALLOW_INVERTED = 1
 
   WHILE status = 0 AND IS_CONN = 1
   DO
@@ -199,7 +202,7 @@ PROC PostMsg(BYTE parentId)
     OD
 
     IF skip = 0 AND status = 0 AND maxLine > 19 THEN
-      NWriteSE("Max msg lines reached!")
+      NWriteSE("Max lines reached!")
       skip = 1
     FI
     IF skip = 0 THEN
@@ -207,7 +210,7 @@ PROC PostMsg(BYTE parentId)
 
       IF maxLine >= 14 THEN
         IF (19-maxLine) = 0 THEN
-          NWriteSE("Max msg lines reached!")
+          NWriteSE("Max lines reached!")
         ELSE
           StrB((19-maxLine),nl)
           NWriteS("WARN> ")
@@ -303,6 +306,7 @@ PROC PostMsg(BYTE parentId)
 
   Close(5)
   GFXMODE = 0
+  ALLOW_INVERTED = 0
 
 RETURN
 
@@ -316,21 +320,26 @@ RETURN
 BYTE FUNC CheckIdOOB(BYTE n,dir)
   BYTE dId=[0]
 
-  ;TODO:this only works when the base
-  ;     has rolled!
+  ; if not rolled,check if n is OOB
 
-  dId = GetDispId(n)
+  IF MBROLL = 0 AND n >= HIMSGID THEN
+    dId = 50
+  ELSE
+    dId = GetDispId(n)
+  FI
+
   IF (dId = 50 AND dir = 1) OR (dId = 1 AND dir = 0) THEN
     NPutC(155)
     NWriteSE("End of messages")
-    NPutC(155)
-    NWriteS("Post a new message? [n]")
+    NWriteS("[R]eply [P]ost E[x]it? ")
     c = NGetB()
-    IF c = 'y OR c = 'Y THEN
-      PostMsg()
-      RETURN(n)
+    IF c = 'r OR c = 'R THEN
+      PostMsg(n)
+    ELSEIF c = 'p OR c = 'P THEN
+      PostMsg(255)
     ELSE
-      RETURN(200)
+      NPutC(155)
+      n = 200
     FI
   ELSE
     IF dir = 1 THEN
@@ -347,15 +356,15 @@ PROC ReadMsgs()
   BYTE n=[0],rDraw=[1],dId=[0],dir=[0]
 
   rDraw=1
-  dir=0
+  dir=1
   dId=0
 
-  PrintF("U=%B Hi=%B%E",UATTR(5),HIMSGID)
+  PrintF("READ:UserHi=%B HiMsg=%B%E",UATTR(5),HIMSGID)
 
   n=UATTR(5)
-  IF n <> HIMSGID THEN
-    dir=1
-  FI
+;  IF n <> HIMSGID THEN
+;    dir=1
+;  FI
 
   NPutC(125)
 
@@ -397,7 +406,9 @@ PROC ReadMsgs()
       ELSE
         n = GetRealId(n)
       FI
-
+      dir = 1
+    ELSEIF c = 'L THEN
+      n = HIMSGID
     ELSEIF c = 'R THEN
       PostMsg(n)
     ELSEIF c = 'P THEN

@@ -135,10 +135,12 @@ RETURN (readLen)
 
 ;returns idx of last char
 BYTE FUNC GetInp()
+  BYTE checkC=[0]
   CARD readLen=[0]
 
   readLen = 0
   c = 0
+  checkC = 0
 
   FOR i = 0 TO 39
   DO
@@ -169,7 +171,12 @@ BYTE FUNC GetInp()
           c==-1
         ELSEIF c < 38 THEN
 
-          IF GFXMODE = 0 AND (NSB(i) < 32 OR NSB(i) > 122) THEN
+          ;allow inverse text when
+          ;not in gfx mode if flagged
+          checkC = NSB(i)
+          IF ALLOW_INVERTED=1 AND checkC >= 128 THEN checkC ==- 128 FI
+
+          IF GFXMODE = 0 AND (checkC < 32 OR checkC > 122) THEN
             ; IGNORE
           ELSE
             RXBUFF(c) = NSB(i)

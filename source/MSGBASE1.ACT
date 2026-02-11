@@ -52,21 +52,31 @@ BYTE FUNC GetRealId(BYTE dId)
   BYTE id=[0]
   id = 0
 
+  PrintF("GetRealId : dId=%B%E",dId)
+
   IF MBROLL = 1 THEN
     id = dId + HIMSGID
     IF HIMSGID > id THEN
       id==-256
     FI
+    PrintF("MBROLLED : realid=%B",id)
   ELSE
     IF dId > HIMSGID THEN
       id = HIMSGID
+      PrintF("MB NOT ROLL : id=himsg : id=%B",id)
     ELSEIF dId = 0 THEN
       id = 1
+      PrintE("MB NOT ROLL : dId=0 so id=1")
+    ELSE
+      PrintE("MB NOT ROLL: ELSE, id = dId")
+      id = dId
     FI
   FI
   IF id >= 50 THEN
     id==-50
+    PrintE("Over 50, id==-50")
   FI
+  PrintF("FINAL ID:%B%E",id)
 RETURN (id)
 
 
@@ -225,7 +235,7 @@ PROC ViewMsg(BYTE id)
 ;          PACTL = PACTL % 1
           IF NSB(0) = 3 THEN
             NPutC(155)
-            PrintE("^C FOUND")
+           ;PrintE("^C FOUND")
             EXIT
           FI
         FI

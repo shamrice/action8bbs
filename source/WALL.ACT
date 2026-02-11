@@ -14,7 +14,10 @@ PROC Wall()
   FI
 
   NWriteSE("Enter new wall text:")
+
+  ALLOW_INVERTED = 1
   maxI = GetInp()
+  ALLOW_INVERTED = 0
 
   IF RXBUFF(0) = 32 THEN
     NWriteSE("Not adding entry..")

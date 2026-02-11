@@ -149,6 +149,7 @@ RETURN
 
 
 PROC DeleteLines(BYTE l)
+  BYTE idx=[0]
   BYTE ARRAY sl(5)
 
   IF maxLine = 0 THEN
@@ -158,20 +159,17 @@ PROC DeleteLines(BYTE l)
 
   PrintF("DELETE1 l=%B%E",l)
 
-  IF l > 0 THEN
+  IF l > 0 AND l < maxLine THEN
+
+    FOR idx = 0 TO 4
+    DO
+      sl(idx) = 32
+    OD
 
     StrB(l,sl)
 
     l==-1
     PrintF("DELETE2 l=%B%E",l)
-
-    IF l > maxLine THEN
-      l = maxLine
-      StrB((l-1),sl)
-    FI
-    PrintF("DELETE3 l=%B%E",l)
-
-
 
     NWriteS(">>Delete line ")
     NWriteS(sl)
@@ -221,7 +219,7 @@ BYTE FUNC HEditCmd()
     FI
 
   ELSEIF RXBUFF(1) = 'b THEN
-    NWriteS("Clear msg and restart [n]?")
+    NWriteS("Clear message and restart [n]?")
     c = NGetB()
     NPutC(155)
     IF c = 'y THEN

@@ -9,10 +9,10 @@ BYTE TSEXP = 0
 BYTE FUNC TSessExp()
 
   IF TS > TSEXP THEN
-    PrintF("TSEXP=%B TS=%B%E",TSEXP,TS)
+    PrintF("Session Expired : TSEXP=%B TS=%B%E",TSEXP,TS)
 
     NStatus()
-    NWriteSE("Session expired!")
+   ;NWriteSE("Session expired!")
     IS_CONN = 0
     RETURN (1)
   FI

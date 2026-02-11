@@ -30,8 +30,8 @@ PROC NEOpen(BYTE idx)
     ds(i) = 0
   OD
 
-; SCopy(ds,"N4:HTTP://192.168.1.148:3000/bbs/fuji/63/latest/")
-   SCopy(ds,"N4:HTTP://192.168.1.118:3000/bbs/fuji/16/latest/")
+  SCopy(ds,"N4:HTTP://192.168.1.231:3000/bbs/fuji/63/latest/")
+ ; SCopy(ds,"N4:HTTP://192.168.1.118:3000/bbs/fuji/16/latest/")
 
   StrB(idx,sId)
   SAssign(ds,sId,49,50)
