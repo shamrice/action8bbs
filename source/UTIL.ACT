@@ -1,3 +1,5 @@
+
+
 MODULE
 ;set uname before checking pass!
 ;uname can be used in main app
@@ -167,8 +169,8 @@ BYTE FUNC GetInp()
           RETURN (c)
         ELSEIF NSB(i) = 126 AND c > 0 THEN
           NPutC(126)
-          RXBUFF(c) = 32
           c==-1
+          RXBUFF(c) = 32
         ELSEIF c < 38 THEN
 
           ;allow inverse text when

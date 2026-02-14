@@ -1,0 +1,109 @@
+
+
+PROC SurveyVote()
+  BYTE max=[0]
+  BYTE ARRAY tempCounts(5)
+  max=0
+
+  FOR i = 0 to 4
+  DO
+    tempCounts(i) = 0
+  OD
+
+  IF UATTR(10) = 1 THEN
+    NPutC(155)
+    NPutC(155)
+    NWriteSE("You've already voted!")
+    NWriteSE("Please wait until next survey to")
+    NWriteSE("vote again!")
+    NPutC(155)
+    NWriteS("Press any key...")
+    NGetB()
+    RETURN
+  FI
+
+  NPutC(125)
+  NPrintFile("D2:SURVEY.ATA")
+
+  NWriteS("Choice? ")
+  c = NGetB()
+
+  NPutC(155)
+  NPutC(155)
+
+  IF c = 'Q or c = 'q THEN
+    NWriteSE(">>Not voting...")
+    TSleep(45)
+    RETURN
+  FI
+
+  c = atob(c,32)
+
+  Close(5)
+  Open(5,"D2:SURVEY.DAT",4,0)
+
+  max = InputBD(5)
+
+  FOR i = 0 TO max - 1
+  DO
+    tempCounts(i) = InputBD(5)
+  OD
+
+  Close(5)
+
+  IF c = 0 OR c > max THEN
+    NWriteSE("ERROR> Invalid choice!")
+    TSleep(45)
+    RETURN
+  FI
+
+  PrintF("New survey vote for: %B%E",c)
+
+  c==-1
+  tempCounts(c)==+1
+
+  NWriteSE(">>Vote cast!")
+  NWriteSE("Check back next run for results!")
+
+  ; voted
+  UATTR(10) = 1
+
+  Open(5,"D2:SURVEY.DAT",8,0)
+  PrintBDE(5,max)
+  FOR i = 0 TO max - 1
+  DO
+    PrintBDE(5,tempCounts(i))
+  OD
+  Close(5)
+
+  TSleep(45)
+RETURN
+
+
+PROC SurveyMenu()
+
+  PrintE("Survey menu enter.")
+
+  DO
+    NPutC(125)
+    NPrintFile("D1:SURVMENU.ATA")
+    NWriteS("SURVEY> ")
+
+    c = NGetB()
+
+    IF c = '1 THEN
+      SurveyVote()
+    ELSEIF c = '2 THEN
+      NPutC(125)
+      NPrintFile("D2:SURVEY.HIS")
+      NPutC(155)
+      NWriteS("Press any key..")
+      NGetB()
+    ELSEIF c = '3 OR IS_CONN = 0 THEN
+      EXIT
+    FI
+  OD
+  NPutC(155)
+  NPutC(155)
+RETURN
+

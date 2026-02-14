@@ -165,11 +165,14 @@ PROC PostMsg(BYTE parentId)
 
   PutD(5,155)
   PutD(5,155)
-  SCopy(RXBUFF, "----+----")
-  FOR i = 0 TO 2
-  DO
+  SCopy(RXBUFF,"----+--------+--------+----")
+;  SCopy(RXBUFF, "----+----")
+;  FOR i = 0 TO 2
+;  DO
     NWriteS(RXBUFF)
-  OD
+;;    NWriteS(RXBUFF)
+;;    NWriteS(RXBUFF)
+;  OD
   NWriteSE("----+---")
 
   maxLine = 0

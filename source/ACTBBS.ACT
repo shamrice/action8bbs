@@ -1,7 +1,7 @@
 ; Action!8! BBS
 ;
 ; Start Date: 2025-07-11
-; Last update: 2026-02-07
+; Last update: 2026-02-13
 
 BYTE RTS = [$60]
 
@@ -29,6 +29,7 @@ INCLUDE "D1:ACCT1.ACT"
 INCLUDE "D1:ACCTATTR.ACT"
 INCLUDE "D1:WALL.ACT"
 INCLUDE "D1:NEBBSAPI.ACT"
+INCLUDE "D1:SURVEY.ACT"
 
 PROC AcceptConn()
   BYTE KB = $02FC
@@ -137,7 +138,7 @@ PROC HandleUserConn()
     ELSEIF c = 'R THEN
       ReadMsgs()
 
-    ELSEIF c = 'S THEN
+    ELSEIF c = 'B THEN
       NPrintFile("D2:SYSINFO.TXT")
 
     ELSEIF c = '/ THEN
@@ -148,6 +149,9 @@ PROC HandleUserConn()
 
     ELSEIF c = 'W THEN
       Wall()
+
+    ELSEIF c = 'S THEN
+      SurveyMenu()
 
     ELSEIF c = 'I THEN
       NPutC(155)
