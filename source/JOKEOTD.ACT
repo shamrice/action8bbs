@@ -1,0 +1,39 @@
+
+
+PROC JokeOTD()
+
+  NPutC(155)
+  NPutC(155)
+  NWriteSE("> JKE F THE DAY <")
+  NPutC(155)
+
+  NGetDT()
+  v = NSB(0) ; day
+
+  PrintF("view joke=%B%E",v)
+
+  Close(5)
+  Open(5,"D2:JOKES.DAT",4,0)
+
+  i = 0
+  DO
+    IF EOF(5) <> 0 THEN
+      EXIT
+    FI
+
+    InputMD(5,RXBUFF,38)
+
+    c=(i/2)+1
+
+    IF c = v THEN
+      NWriteSE(RXBUFF)
+    FI
+
+    i==+1
+  OD
+  Close(5)
+
+  NPutC(155)
+
+RETURN
+

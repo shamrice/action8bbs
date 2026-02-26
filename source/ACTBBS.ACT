@@ -1,7 +1,7 @@
 ; Action!8! BBS
 ;
 ; Start Date: 2025-07-11
-; Last update: 2026-02-13
+; Last update: 2026-02-21
 
 BYTE RTS = [$60]
 
@@ -30,6 +30,7 @@ INCLUDE "D1:ACCTATTR.ACT"
 INCLUDE "D1:WALL.ACT"
 INCLUDE "D1:NEBBSAPI.ACT"
 INCLUDE "D1:SURVEY.ACT"
+INCLUDE "D1:JOKEOTD.ACT"
 
 PROC AcceptConn()
   BYTE KB = $02FC
@@ -112,7 +113,11 @@ PROC HandleUserConn()
   NPrintFile("D1:TITLE.ATA")
   NGetB()
 
-  NPrintFile("D1:MAINMENU.ATA")
+  IF UATTR(10) = 1 THEN
+    NPrintFile("D1:MAINMENU.ATA")
+  ELSE
+    NPrintFile("D1:MAINMENS.ATA")
+  FI
 
   c = 0
 
@@ -153,6 +158,9 @@ PROC HandleUserConn()
     ELSEIF c = 'S THEN
       SurveyMenu()
 
+    ELSEIF c = 'J THEN
+      JokeOTD()
+
     ELSEIF c = 'I THEN
       NPutC(155)
       NWriteSE("Sorry, no easter egg this time!")
@@ -161,7 +169,11 @@ PROC HandleUserConn()
 ;     NPrintFile("D1:INFIL.ATA")
 
     ELSEIF c = '? THEN
-      NPrintFile("D1:MAINMENU.ATA")
+      IF UATTR(10) = 1 THEN
+        NPrintFile("D1:MAINMENU.ATA")
+      ELSE
+        NPrintFile("D1:MAINMENS.ATA")
+      FI
 
     ELSEIF c = 'N THEN
       NELatest()

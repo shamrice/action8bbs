@@ -2,7 +2,7 @@
 ; Action 8 BBS Admin/User Editor
 ;
 ; Created: 2025-10-19
-; Updated: 2026-02-13
+; Updated: 2026-02-21
 ;
 ;
 ;
@@ -411,12 +411,13 @@ PROC SetSurvey()
     Close(5)
     Open(5,SFNAME,4,0)
 
+    PrintDE(6," VOTES:  ")
     c = InputBD(5) ;num options
     IF c > 0 THEN
       FOR i = 1 TO c
       DO
         c = InputBD(5)
-        PrintD(6, "OPTION #")
+        PrintD(6,"  OPTION #")
         PrintBD(6,i)
         PrintD(6,": ")
         PrintBDE(6,c)

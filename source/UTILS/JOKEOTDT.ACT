@@ -1,0 +1,55 @@
+
+; joke of the day test that runs locally
+
+MODULE
+
+BYTE i=[0],c=[0]
+BYTE ARRAY NSB(40)
+BYTE ARRAY RXBUFF(40)
+
+PROC NGetDT()
+
+  NSB(1) = 20
+
+RETURN
+
+PROC JokeOTD()
+
+  FOR i = 0 TO 39
+  DO
+    NSB(i) = 32
+    RXBUFF(i) = 32
+  OD
+
+  NGetDT()
+
+  PrintF("NSB(1)=%B%E",NSB(1))
+
+  Close(5)
+  Open(5,"D2:JOKES.DAT",4,0)
+
+  i = 0
+  DO
+    IF EOF(5) <> 0 THEN
+      EXIT
+    FI
+
+    InputMD(5,RXBUFF,39)
+
+    c=(i/2)+1
+    PrintF("C=%B I=%B%E",c,i)
+    PrintE(RXBUFF)
+    IF c=NSB(1) THEN
+      PrintE("**********")
+    FI
+
+    i==+1
+
+    IF i MOD 10 = 0 THEN
+      InputB()
+    FI
+  OD
+  Close(5)
+
+
+RETURN

@@ -1,0 +1,34 @@
+
+; generates joke data place holder
+
+PROC WriteJoke(BYTE n)
+
+  PrintD(5, "JOKE #")
+  PrintBD(5, n)
+  PrintDE(5, " : Line 1")
+
+  PrintD(5, "JOKE #")
+  PrintBD(5, n)
+  PrintDE(5, " : Line 2")
+
+
+RETURN
+
+
+PROC Main()
+
+  BYTE i=[0]
+
+  Close(5)
+  Open(5,"D2:JOKES.DAT",8,0)
+
+  FOR i = 1 TO 31
+  DO
+    WriteJoke(i)
+  OD
+
+  Close(5)
+  PrintE("Done")
+
+
+RETURN
