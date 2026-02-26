@@ -308,14 +308,72 @@ PROC InitAtascii()
   CopyFile("D1:LOGIN.ATA","D2:LOGIN.ATA")
   CopyFile("D1:TITLE.ATA","D2:TITLE.ATA")
   CopyFile("D1:MAINMENU.ATA","D2:MAINMENU.ATA")
+  CopyFile("D1:MAINMENS.ATA","D2:MAINMENS.ATA")
   CopyFile("D1:LOGOUT.ATA","D2:LOGOUT.ATA")
   CopyFile("D1:MSGHELP.ATA","D2:MSGHELP.ATA")
+  CopyFile("D1:SURVEY.ATA","D2:SURVEY.ATA")
 
   PrintE("ATASCII files copied!")
 
 
 
 RETURN
+
+
+
+
+PROC InitSurvey()
+
+  BYTE c=[0]
+  c = 0
+
+  Print("Reset survey files [0]? ")
+  c = InputB()
+
+  IF c = 0 THEN
+    RETURN
+  FI
+
+  PrintE("Creating blank SURVEY.ATA...")
+  Close(5)
+  Open(5,"D2:SURVEY.ATA",8,0)
+  Close(5)
+
+  PrintE("Creating blank SURVEY.DAT..")
+  Open(5,"D2:SURVEY.DAT",8,0)
+  PrintBDE(5,0)
+  Close(5)
+
+  PrintE("Copying 'no results' history...")
+  CopyFile("D1:SURVEY.HIS","D2:SURVEY.HIS")
+
+  PrintE("Survey files initialized!")
+  PrintE("Please run BBSADMIN to configure")
+
+RETURN
+
+
+
+
+PROC InitJokeOTD()
+
+  BYTE c=[0]
+  c = 0
+
+  Print("Init Joke of the day [0]? ")
+  c = InputB()
+
+  IF c = 0 THEN
+    RETURN
+  FI
+
+  PrintE("Copying default jokes...")
+  CopyFile("D1:JOKES.DAT","D2:JOKES.DAT")
+
+  PrintE("Joke data copied!")
+
+RETURN
+
 
 
 
@@ -336,6 +394,8 @@ PROC main()
   InitMsgBase()
   InitMsgTemp()
   InitAtascii()
+  InitSurvey()
+  InitJokeOTD()
 
   PutE()
   PrintE("Setup complete.")
