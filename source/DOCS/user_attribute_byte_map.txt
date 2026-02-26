@@ -1,0 +1,18 @@
+
+Action 8 User Attribute byte map:
+
+Last updated: 2026-02-12
+
+==================================
+ 0 - account create month
+ 1 - account create day
+ 2 - account create year (2 digit)
+ 3 - log in count high byte (increments when 4 rolls over)
+ 4 - log in count low byte
+ 5 - last read high message id
+ 6 - num msgs posted high byte
+ 7 - num msgs posted low byte
+ 8 - Hide view msg help bar (1=true, 0=false)
+ 9 - User account permissions (255 = SysOp)
+10 - Current survey answered (1=true, 0=false)
+11 -> 31 - Unused
