@@ -75,14 +75,14 @@ PROC PostMsg(BYTE parentId)
       ;Put(PREVFROM(i))
       IF PREVFROM(i) <> 32 THEN
         maxI = i
-        PrintF("%EPREV_FROM_MAX_I:%B%E",maxI)
+       ; PrintF("%EPREV_FROM_MAX_I:%B%E",maxI)
         EXIT
       FI
     OD
-    Print("PREV FROM: ")
+  ;  Print("PREV FROM: ")
     FOR i = 0 TO maxI
     DO
-      Put(PREVFROM(i))
+   ;   Put(PREVFROM(i))
       PutD(5,PREVFROM(i))
     OD
   FI
@@ -100,19 +100,19 @@ PROC PostMsg(BYTE parentId)
   FI
 
   IF parentId = 255 OR (maxI = 'n OR maxI = 'N) THEN
-    PrintF("%E>>NOT A REPLY%E")
+   ; PrintF("%E>>NOT A REPLY%E")
     NWriteS(RXBUFF)
 
     maxI = GetInp()
 
     IF maxI > 29 THEN maxI = 29 FI
 
-    PrintF("SUBJ_MAX_I:%B%E",maxI)
+  ;  PrintF("SUBJ_MAX_I:%B%E",maxI)
     Print("SUBJ:")
 
     FOR i = 0 TO maxI
     DO
-      Put(RXBUFF(i))
+    ;  Put(RXBUFF(i))
       PutD(5, RXBUFF(i))
     OD
     Put(155)
@@ -126,7 +126,7 @@ PROC PostMsg(BYTE parentId)
       ;Put(PREVSUBJ(i))
       IF PREVSUBJ(i) <> 32 THEN
         maxI = i
-        PrintF("%EPREV_SUBJ_MAX_I:%B%E",maxI)
+   ;     PrintF("%EPREV_SUBJ_MAX_I:%B%E",maxI)
         EXIT
       FI
     OD
@@ -148,16 +148,16 @@ PROC PostMsg(BYTE parentId)
       DO
         PREVSUBJ(i)=RXBUFF(i)
       OD
-    ELSE
-      PrintE("PREV SUBJ MATCHES /^RE:.*/")
+    ;ELSE
+    ;  PrintE("PREV SUBJ MATCHES /^RE:.*/")
 
     FI
 
-    Print("FINAL_PREV_SUBJ:")
+ ;   Print("FINAL_PREV_SUBJ:")
 
     FOR i = 0 TO maxI
     DO
-      Put(PREVSUBJ(i))
+  ;    Put(PREVSUBJ(i))
       PutD(5, PREVSUBJ(i))
     OD
     Put(155)

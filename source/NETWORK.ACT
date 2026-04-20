@@ -160,27 +160,31 @@ PROC NPutC(BYTE b)
 RETURN
 
 
-PROC NWriteS(BYTE ARRAY str)
+PROC NWriteBase(BYTE nl, BYTE ARRAY s)
   CARD l=[0]
-  l = str(0)
+  l = s(0)
   IF l > 39 THEN
     l = 39
   FI
   FOR nc = 1 TO l
   DO
-    NSB(nc-1) = str(nc)
+    NSB(nc-1) = s(nc)
   OD
+  IF nl = 1 THEN
+    NSB(l) = 155
+    l==+1
+  FI
   NWrite(NSB, l)
 RETURN
 
 
+PROC NWriteS(BYTE ARRAY s)
+  NWriteBase(0, s)
+RETURN
+
+
 PROC NWriteSE(BYTE ARRAY s)
-  NWriteS(s)
-;  NGetStatus()
-;  IF ERRNO <> 1 THEN
-;    RETURN
-;  FI
-  NPutC(155)
+  NWriteBase(1, s)
 RETURN
 
 

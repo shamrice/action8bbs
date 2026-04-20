@@ -27,6 +27,10 @@ RETURN
 BYTE FUNC AcctValid(BYTE checkP, BYTE ARRAY p)
   v = 0
 
+  IF UNAME(0)=32 OR p(0)=32 THEN
+    RETURN(0)
+  FI
+
   Open(UCH,UFNAME,4,0)
 
   DO

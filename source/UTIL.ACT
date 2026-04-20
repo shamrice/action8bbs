@@ -1,10 +1,32 @@
-
-
 MODULE
 ;set uname before checking pass!
 ;uname can be used in main app
 BYTE ARRAY UNAME(10)
 BYTE ARRAY UATTR(32)
+
+
+;converts two byte ATASCII to
+;byte number
+BYTE FUNC atob(BYTE n1,n2)
+  BYTE val=[0]
+  val=0
+
+  IF n1 = 32 AND n2 = 32 THEN
+    RETURN(0)
+  FI
+
+  n1==-48
+
+  IF n2 <> 32 AND n2 <> 155 THEN
+    n1==*10
+    n2==-48
+    n1==+n2
+  FI
+
+  val=n1
+RETURN(val)
+
+
 
 
 BYTE FUNC UCase(BYTE ch)
@@ -57,52 +79,43 @@ PROC NPrintFile(BYTE ARRAY file)
   Open(FIOCB,file,4,0)
 
   DO
-    RXBUFF(i) = GetD(FIOCB)
+    InputSD(FIOCB,RXBUFF)
+    NWriteSE(RXBUFF)
 
     IF EOF(FIOCB) <> 0 THEN
-      NWrite(RXBUFF, i)
       EXIT
     FI
 
-    IF RXBUFF(i) = 155 THEN
-      l==+1
-    FI
+    l==+1
 
-    i==+1
+    IF l > 21 THEN
 
-    IF i > 39 OR l > 21 THEN
-      NWrite(RXBUFF, i)
-      i = 0
+      l = 0
 
-      IF l > 21 THEN
-        IF c <> 'C THEN
-          NWriteS("[MORE, Continuous, Exit]")
-          c = NGetB()
-          c = UCase(c)
-          FOR v = 0 TO 23
-          DO
-            NSB(v) = 126
-          OD
-          NWrite(NSB,24)
-          IF c = 'X THEN
-            NPutC(155)
-            EXIT
-          FI
+      IF c <> 'C THEN
+        NWriteS("[MORE, Continuous, Exit]")
+        c = NGetB()
+        c = UCase(c)
+        FOR v = 0 TO 23
+        DO
+          NSB(v) = 126
+        OD
+        NWrite(NSB,24)
+        IF c = 'X THEN
+          NPutC(155)
+          EXIT
         FI
-        l = 0
-      ELSE
-        NStatus()
-
-        IF BYTESWAITING > 0 THEN
-          NRead(NSB, 1)
-;          TRIP = 0
-;          PACTL = PACTL % 1
-          IF NSB(0) = 3 THEN
-            EXIT
-          FI
-        FI
-
       FI
+    ELSE
+      NStatus()
+
+      IF BYTESWAITING > 0 THEN
+        NRead(NSB, 1)
+        IF NSB(0) = 3 THEN
+          EXIT
+        FI
+      FI
+
     FI
   OD
 

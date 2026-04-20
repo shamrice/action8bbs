@@ -1,5 +1,4 @@
 
-
 PROC SurveyVote()
   BYTE max=[0]
   BYTE ARRAY tempCounts(5)
@@ -61,9 +60,7 @@ PROC SurveyVote()
 
   c==-1
   tempCounts(c)==+1
-
-  NWriteSE(">>Vote cast!")
-  NWriteSE("Check back next run for results!")
+  NPrintFile("D1:VOTEBOX.ATA")
 
   ; voted
   UATTR(10) = 1
@@ -81,9 +78,6 @@ RETURN
 
 
 PROC SurveyMenu()
-
-  PrintE("Survey menu enter.")
-
   DO
     NPutC(125)
     NPrintFile("D1:SURVMENU.ATA")
@@ -101,6 +95,11 @@ PROC SurveyMenu()
       NGetB()
     ELSEIF c = '3 OR IS_CONN = 0 THEN
       EXIT
+    ELSEIF c='4 AND UATTR(9)=255 THEN
+      NPrintFile("D2:SURVEY.DAT")
+      NPutC(155)
+      NWriteS("Press RETURN")
+      NGetB()
     FI
   OD
   NPutC(155)

@@ -1,7 +1,7 @@
 ; Action!8! BBS
 ;
 ; Start Date: 2025-07-11
-; Last update: 2026-02-21
+; Last update: 2026-04-17
 
 BYTE RTS = [$60]
 
@@ -77,22 +77,6 @@ RETURN
 PROC HandleUserConn()
   c = 0
   v = 0
-
-  NWriteSE("Press RETURN to continue....")
-  DO
-    c = NGetB()
-    IF c < 155 THEN
-      v==+1
-    FI
-  UNTIL IS_CONN = 0 OR c = 155 OR v = 10
-  OD
-  v = 0
-  IF c <> 155 THEN
-    IS_CONN = 0
-    RETURN
-  FI
-
-  TSEXP = TS + 1
 
   IF DoLogin() = 0 THEN
     IS_CONN = 0

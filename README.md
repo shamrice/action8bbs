@@ -41,3 +41,8 @@ You will need a terminal program capible of viewing/connecting to an ATASCII BBS
 ## Additional Credits
 
 The NETWORK.ACT library is a modified and expanded upon module based on the NIO.ACT library created by Thomas Cherryhomes. The original library can be found here: https://github.com/FujiNetWIFI/fujinet-apps/blob/master/netcat-action/NIO.ACT
+
+## Additional Notes
+
+The source files are currently uploaded after each version is released using the Fujinet printer to ASCII. This causes some ATASCII chars or inverted text in the original strings to be removed. The .ATA screens are printed using the 'raw' option so they should *hopefully* be true to the originals (untested).
+

@@ -1,31 +1,6 @@
 MODULE
 
-;BYTE ARRAY lOffset(25)
-;CARD ARRAY lSect(25)
-
 BYTE maxLine=[0]
-
-;converts two byte ATASCII to
-;byte number
-BYTE FUNC atob(BYTE n1,n2)
-  BYTE val=[0]
-  val=0
-
-  IF n1 = 32 AND n2 = 32 THEN
-    RETURN(0)
-  FI
-
-  n1==-48
-
-  IF n2 <> 32 AND n2 <> 155 THEN
-    n1==*10
-    n2==-48
-    n1==+n2
-  FI
-
-  val=n1
-RETURN(val)
-
 
 PROC EditLine(BYTE l)
   BYTE viewOffset=[0]
@@ -119,7 +94,6 @@ PROC ListMsg(BYTE t)
       RXBUFF(idx) = k
       idx==+1
 
-    ;IF k = 155 THEN
     ELSE
       IF t = 'n THEN
         StrB(l,ls)
@@ -128,12 +102,12 @@ PROC ListMsg(BYTE t)
         IF idx > 37 THEN
           idx==-2
         FI
-     ;   idx==-2 ;give space for nums
-     ;   RXBUFF(idx-1)=155
-
       FI
+
+      RXBUFF(idx) = 155
+      idx==+1
       NWrite(RXBUFF,idx)
-      NPutC(155)
+
       idx = 0
       l==+1
 ;      PrintF("l=%B max=%B%E",l,maxLine)
