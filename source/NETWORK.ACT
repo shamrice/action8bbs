@@ -160,6 +160,15 @@ PROC NPutC(BYTE b)
 RETURN
 
 
+PROC NPutE(BYTE num)
+  FOR nc = 0 TO num
+  DO
+    NSB(nc) = 155
+  OD
+  NWrite(NSB,num)
+RETURN
+
+
 PROC NWriteBase(BYTE nl, BYTE ARRAY s)
   CARD l=[0]
   l = s(0)

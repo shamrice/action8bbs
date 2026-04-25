@@ -10,8 +10,7 @@ PROC SurveyVote()
   OD
 
   IF UATTR(10) = 1 THEN
-    NPutC(155)
-    NPutC(155)
+    NPutE(2)
     NWriteSE("You've already voted!")
     NWriteSE("Please wait until next survey to")
     NWriteSE("vote again!")
@@ -21,14 +20,12 @@ PROC SurveyVote()
     RETURN
   FI
 
-  NPutC(125)
   NPrintFile("D2:SURVEY.ATA")
 
   NWriteS("Choice? ")
   c = NGetB()
 
-  NPutC(155)
-  NPutC(155)
+  NPutE(2)
 
   IF c = 'Q or c = 'q THEN
     NWriteSE(">>Not voting...")
@@ -79,7 +76,6 @@ RETURN
 
 PROC SurveyMenu()
   DO
-    NPutC(125)
     NPrintFile("D1:SURVMENU.ATA")
     NWriteS("SURVEY> ")
 
@@ -88,7 +84,6 @@ PROC SurveyMenu()
     IF c = '1 THEN
       SurveyVote()
     ELSEIF c = '2 THEN
-      NPutC(125)
       NPrintFile("D2:SURVEY.HIS")
       NPutC(155)
       NWriteS("Press any key..")
@@ -102,7 +97,6 @@ PROC SurveyMenu()
       NGetB()
     FI
   OD
-  NPutC(155)
-  NPutC(155)
+  NPutE(2)
 RETURN
 

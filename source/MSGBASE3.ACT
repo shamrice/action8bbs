@@ -182,6 +182,7 @@ PROC PostMsg(BYTE parentId)
   lOffset(maxLine) = tOffset
 
   ALLOW_INVERTED = 1
+  ALLOW_WW = 1
 
   WHILE status = 0 AND IS_CONN = 1
   DO
@@ -310,6 +311,7 @@ PROC PostMsg(BYTE parentId)
   Close(5)
   GFXMODE = 0
   ALLOW_INVERTED = 0
+  ALLOW_WW = 0
 
 RETURN
 

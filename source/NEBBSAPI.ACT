@@ -4,9 +4,6 @@ MODULE
 ;NETWORK lib to take a DUNIT
 ;for open/close at least...
 
-;TODO : Use same print method on
-; PrintFile PROC to fix the weird
-; [MORE] placement.
 
 PROC NEStatus()
   DDEVIC = $71
@@ -31,7 +28,7 @@ PROC NEOpen(BYTE idx)
   OD
 
   SCopy(ds,"N4:HTTP://192.168.1.231:3000/bbs/fuji/63/latest/")
- ; SCopy(ds,"N4:HTTP://192.168.1.118:3000/bbs/fuji/16/latest/")
+;  SCopy(ds,"N4:HTTP://192.168.1.118:3000/bbs/fuji/16/latest/")
 
   StrB(idx,sId)
   SAssign(ds,sId,49,50)
@@ -92,7 +89,7 @@ PROC NELatest()
   lines=0
   len=0
   maxI=0
-  c=9
+  c=0
   v=0
 
   BYTESWAITING = 0
@@ -131,22 +128,26 @@ PROC NELatest()
 
       IF BYTESWAITING > 0 THEN
         len = NERead(RXBUFF)
-;        PrintF("READ LEN=%B%E",len)
-        ;len==-1
-        maxI = 0
-        FOR i = 0 TO len
+        ;PrintF("%E>>READ LEN=%B%E",len)
+
+        maxI = len-1
+        WHILE maxI > 0
         DO
-          IF RXBUFF(i) = 155 THEN
-            lines==+1
-            maxI = i
-            ;PrintF("LINE=%B%E",lines)
+          IF RXBUFF(maxI) <> 32 THEN
+            EXIT
+          ELSE
+            maxI==-1
           FI
         OD
+        maxI==+1
+        RXBUFF(maxI)=155
 
-        IF lines > 17 THEN
-          NWrite(RXBUFF,maxI)
+        NWrite(RXBUFF,maxI)
+        lines==+1
+     ;  PrintF("LINES=%B%E",lines)
 
-          NPutC(155)
+        IF lines > 16 THEN
+          lines = 0
           NWriteS("[MORE]")
           NGetB()
           NSB(0)=126
@@ -156,17 +157,6 @@ PROC NELatest()
           NSB(4)=126
           NSB(5)=126
           NWrite(NSB,6)
-          lines=0
-          v = 0
-          maxI==+1 ; get past NL
-          FOR i = maxI TO len
-          DO
-            NSB(v) = RXBUFF(i)
-            v==+1
-          OD
-          NWrite(NSB,v-1)
-        ELSE
-          NWrite(RXBUFF,len)
         FI
 
       ELSE
@@ -175,7 +165,7 @@ PROC NELatest()
     OD
     NEClose()
 
-    IF c > 0 THEN
+    IF c < 10 THEN
       NWriteS("RETURN for Next or EXit")
 
       v = NGetB()
@@ -184,7 +174,7 @@ PROC NELatest()
         EXIT
       FI
 
-      c==-1
+      c==+1
 
     ELSE
       NWriteSE("END OF LATEST 10 MSGS")

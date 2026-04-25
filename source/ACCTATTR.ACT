@@ -64,8 +64,7 @@ PROC UAttrConfig()
     FI
     StrC(uAttrTmp,temp)
     NWriteSE(temp)
-    NPutC(155)
-    NPutC(155)
+    NPutE(2)
     NWriteSE("SETTINGS")
     NWriteSE("________")
     NWriteS("1)View Msg Help Bar ")
@@ -88,8 +87,7 @@ PROC UAttrConfig()
       EXIT
     FI
   OD
-  NPutC(155)
-  NPutC(155)
+  NPutE(2)
 
 RETURN
 

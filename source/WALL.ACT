@@ -6,8 +6,7 @@ PROC Wall()
 
   NWriteS("Add to the wall [n]? ")
   c = NGetB()
-  NPutC(155)
-  NPutC(155)
+  NPutE(2)
 
   IF UCase(c) <> 'Y THEN
     RETURN

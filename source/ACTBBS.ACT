@@ -1,7 +1,7 @@
 ; Action!8! BBS
 ;
 ; Start Date: 2025-07-11
-; Last update: 2026-04-17
+; Last update: 2026-04-25
 
 BYTE RTS = [$60]
 
@@ -11,7 +11,7 @@ MODULE
 
 DEFINE FIOCB="6"
 BYTE IMASK=[0],ALLOW_INVERTED=[0]
-BYTE GFXMODE=[0],UCLOG=[0]
+BYTE GFXMODE=[0],UCLOG=[0],ALLOW_WW=[0]
 BYTE c=[0],i=[0],v=[0]
 
 BYTE ARRAY lOffset(25)
@@ -53,6 +53,7 @@ PROC AcceptConn()
       GFXMODE = 0
       IGNORE_CONN_CLOSED = 0
       ALLOW_INVERTED = 0
+      ALLOW_WW = 0
       ; reset session timer..
       TSEXP = TS + 1
 

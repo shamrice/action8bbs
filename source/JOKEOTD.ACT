@@ -1,9 +1,10 @@
 
-
 PROC JokeOTD()
+  BYTE jFound=[0]
 
-  NPutC(155)
-  NPutC(155)
+  jFound = 0
+
+  NPutE(2)
   NWriteSE("> JKE F THE DAY <")
   NPutC(155)
 
@@ -27,6 +28,8 @@ PROC JokeOTD()
 
     IF c = v THEN
       NWriteSE(RXBUFF)
+      jFound==+1
+      IF jFound = 2 THEN EXIT FI
     FI
 
     i==+1

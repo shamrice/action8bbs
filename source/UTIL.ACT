@@ -4,6 +4,9 @@ MODULE
 BYTE ARRAY UNAME(10)
 BYTE ARRAY UATTR(32)
 
+; word wrap string buffer and flag
+BYTE ARRAY WWSB(10)
+BYTE WWSB_V = [0]
 
 ;converts two byte ATASCII to
 ;byte number
@@ -148,20 +151,40 @@ CARD FUNC ReadInp()
 
 RETURN (readLen)
 
+
 ;returns idx of last char
 BYTE FUNC GetInp()
-  BYTE checkC=[0]
+  BYTE checkC=[0],lastSpace=[0]
   CARD readLen=[0]
 
+  lastSpace = 0
   readLen = 0
   c = 0
   checkC = 0
 
   FOR i = 0 TO 39
   DO
-    RXBUFF(i) = 32
+    IF ALLOW_WW = 1 AND i < 10 THEN
+      IF WWSB_V = 1 AND WWSB(i) <> 32 THEN
+   ;     PrintF("FROM WWBUFF i=%B char=%C%E",i,WWSB(i))
+        RXBUFF(i) = WWSB(i)
+        c==+1
+      ELSE
+        RXBUFF(i) = 32
+      FI
+      WWSB(i) = 32 ; clear it
+    ELSE
+      RXBUFF(i) = 32
+    FI
     NSB(i) = 32
   OD
+
+  IF ALLOW_WW = 1 AND WWSB_V = 1 THEN
+  ;  PrintF("WW : 0 to %B%E",c)
+    NWrite(RXBUFF, c)
+  FI
+
+  WWSB_V = 0
 
   IF IS_CONN = 0 THEN
     RETURN(0)
@@ -194,6 +217,10 @@ BYTE FUNC GetInp()
           IF GFXMODE = 0 AND (checkC < 32 OR checkC > 122) THEN
             ; IGNORE
           ELSE
+            IF NSB(i)=32 THEN
+              lastSpace = c
+    ;          PrintF("LASTSPACE=%B%E",lastSpace)
+            FI
             RXBUFF(c) = NSB(i)
             IF IMASK > 0 THEN
               NSB(i) = IMASK
@@ -201,6 +228,28 @@ BYTE FUNC GetInp()
             NPutC(NSB(i))
             c==+1
           FI
+        ELSEIF ALLOW_WW = 1 AND c >= 38 AND lastSpace>28 THEN
+          IF NSB(i) <> 32 THEN
+
+            checkC = NSB(i)
+            c=0
+            lastSpace==+1
+            FOR i = lastSpace TO 37
+            DO
+              NSB(c) = 126
+              WWSB(c)=RXBUFF(i)
+              RXBUFF(i) = 32
+              c==+1
+            OD
+            WWSB(c) = checkC
+            NSB(c) = 155
+            NWrite(NSB,c+1)
+            WWSB_V = 1
+
+          ELSE
+            NPutC(155)
+          FI
+          RETURN(38)
         FI
       OD
     ELSE
