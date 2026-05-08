@@ -2,6 +2,11 @@
 
 Atari 8bit ATASCII BBS written in Action! for the Fujinet.
 
+BBS is live on weekends (and some times during the week). It runs on my stock 800XL.
+
+Connect info:
+actbbs.ddns.net:6502
+
 ## Setting up
 * Mount Action and DOS on D1
 * Mount a blank formatted disk in D2
