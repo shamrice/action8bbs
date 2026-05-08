@@ -2,9 +2,10 @@
 
 Atari 8bit ATASCII BBS written in Action! for the Fujinet.
 
+## Connecting to live BBS
 BBS is live on weekends (and some times during the week). It runs on my stock 800XL.
 
-Connect info:
+**Connect info:**
 actbbs.ddns.net:6502
 
 ## Setting up
