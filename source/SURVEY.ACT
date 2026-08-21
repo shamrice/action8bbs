@@ -35,8 +35,7 @@ PROC SurveyVote()
 
   c = atob(c,32)
 
-  Close(5)
-  Open(5,"D2:SURVEY.DAT",4,0)
+  FOpen(5,"D2:SURVEY.DAT",4)
 
   max = InputBD(5)
 
@@ -45,7 +44,7 @@ PROC SurveyVote()
     tempCounts(i) = InputBD(5)
   OD
 
-  Close(5)
+  FClose(5)
 
   IF c = 0 OR c > max THEN
     NWriteSE("ERROR> Invalid choice!")
@@ -62,13 +61,13 @@ PROC SurveyVote()
   ; voted
   UATTR(10) = 1
 
-  Open(5,"D2:SURVEY.DAT",8,0)
+  FOpen(5,"D2:SURVEY.DAT",8)
   PrintBDE(5,max)
   FOR i = 0 TO max - 1
   DO
     PrintBDE(5,tempCounts(i))
   OD
-  Close(5)
+  FClose(5)
 
   TSleep(45)
 RETURN

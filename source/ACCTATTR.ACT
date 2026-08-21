@@ -1,6 +1,7 @@
 
 PROC SetUAttr()
-  Open(UCH,UANAME,12,0)
+  FOpen(UCH,UANAME,12)
+
   Point(UCH,USECT,UOFFSET)
 
   FOR i = 0 TO 31
@@ -9,19 +10,22 @@ PROC SetUAttr()
 ;    PrintF("Attr(%B)=%B%E",i,UATTR(i))
   OD
 
-  Close(UCH)
+  FClose(UCH)
 RETURN
 
 
 PROC SaveUAttr()
-  Open(UCH,UANAME,12,0)
+
+  FOpen(UCH,UANAME,12)
+
   Point(UCH,USECT,UOFFSET)
 
   FOR i = 0 TO 31
   DO
     PutD(UCH,UATTR(i))
   OD
-  Close(UCH)
+
+  FClose(UCH)
   PrintE("User attrs saved")
 RETURN
 
@@ -46,9 +50,10 @@ PROC UAttrConfig()
     StrB(UATTR(2),temp)
     NWriteSE(temp)
     NWriteS("     NUM LOGINS: ")
-    uAttrTmp = UATTR(4)
     IF UATTR(3) > 0 THEN
-      uAttrTmp==*UATTR(3)
+      UAttrTmp=(UATTR(3)*256)+UATTR(4)
+    ELSE
+      uAttrTmp = UATTR(4)
     FI
     StrC(uAttrTmp,temp)
     NWriteSE(temp)
@@ -58,9 +63,10 @@ PROC UAttrConfig()
     NWriteSE(temp)
 
     NWriteS(" NUM POSTS MADE: ")
-    uAttrTmp = UATTR(7)
     IF UATTR(6) > 0 THEN
-      uAttrTmp==*UATTR(6)
+      UAttrTmp=(UATTR(6)*256)+UATTR(7)
+    ELSE
+      uAttrTmp = UATTR(7)
     FI
     StrC(uAttrTmp,temp)
     NWriteSE(temp)

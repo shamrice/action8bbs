@@ -1,3 +1,4 @@
+
 MODULE
 
 BYTE MO=[0]
@@ -15,6 +16,7 @@ BYTE ARRAY PREVSUBJ(30)
 BYTE ARRAY PREVFROM(30)
 
 PROC SetHIMSG()
+  Close(6)
   Open(6,MHFNAME,4,0)
   HIMSGID = InputBD(6)
   MBROLL = InputBD(6)
@@ -29,8 +31,7 @@ PROC SetMsgCoords(BYTE id)
   MS=0
   MO=0
 
-  Close(6)
-  Open(6,MIFNAME,4,0)
+  FOpen(6,MIFNAME,4)
 
   WHILE EOF(6) = 0
   DO
@@ -43,7 +44,7 @@ PROC SetMsgCoords(BYTE id)
     l==+1
   OD
 
-  Close(6)
+  FClose(6)
 ;  PrintF("ID=%B MS=%U MO=%B%E",id,MS,MO)
 RETURN
 
@@ -117,7 +118,7 @@ PROC ViewMsg(BYTE id)
 
   c=0
   i=0
-  l=1
+  l=0
   pSubjI=0
   pId=id
 
@@ -129,8 +130,7 @@ PROC ViewMsg(BYTE id)
 
   i=0
 
-  Close(5)
-  Open(5,MBFNAME,12,0)
+  FOpen(5,MBFNAME,12)
   Point(5,MS,MO)
 
   ;default to no parentid if OOB
@@ -148,10 +148,11 @@ PROC ViewMsg(BYTE id)
 
   LASTPID=pId
 
-  NPutC(125)
   id = GetDispId(id)
   pId = GetDispId(pId)
 
+  NResume()
+  NPutC(125)
   NWriteS("  ID: ")
   StrB(id,RXBUFF)
   NWriteS(RXBUFF)
@@ -174,28 +175,53 @@ PROC ViewMsg(BYTE id)
     NPutC(155)
   FI
 
-  WHILE EOF(5) = 0
+  WHILE EOF(5) = 0 AND IS_CONN = 1
   DO
-    RXBUFF(i) = GetD(5)
+    NSuspend()
+    InputSD(5,RXBUFF)
+    NResume()
 
-    IF RXBUFF(i) = 158 THEN
+    l==+1
+
+    IF RXBUFF(1) = 158 THEN
+;      PrintE("FOUND END OF RECORD!")
       EXIT
-    ELSEIF RXBUFF(i) = 155 THEN
-      l==+1
     FI
 
     ; keep track of subj for replies
     ; there's def a bug here with the
     ; pSubjI var....
-    IF isMore=0 AND (l=2 OR l=4) THEN
-      pSubjI==+1
 
-      IF pSubjI > 7 AND pSubjI < 38 THEN
-        IF l = 2 THEN
-          PREVFROM(pSubjI - 8) = RXBUFF(i)
-        ELSE
-          PREVSUBJ(pSubjI - 8) = RXBUFF(i)
-        FI
+
+    ; TODO : Use a pointer to each array
+    IF isMore=0 AND (l=2 OR l=4) THEN
+
+      IF l = 2 THEN
+        Print("PREVFROM:")
+        FOR pSubjI = 7 TO 37
+        DO
+
+          IF RXBUFF(pSubjI) = 155 THEN
+            pSubjI = 37
+          ELSE
+            PREVFROM(pSubJI - 7) = RXBUFF(pSubjI)
+            Put(PREVFROM(pSubjI-7))
+          FI
+        OD
+        PutE()
+      ELSE
+        Print("PREVSUBJ:")
+        FOR pSubjI = 7 TO 37
+        DO
+
+          IF RXBUFF(pSubjI) = 155 THEN
+            pSubjI = 37
+          ELSE
+            PREVSUBJ(pSubjI - 7) = RXBUFF(pSubjI)
+            Put(PREVSUBJ(pSubjI-7))
+          FI
+        OD
+        PutE()
       FI
     ELSE
       pSubjI = 0
@@ -203,41 +229,34 @@ PROC ViewMsg(BYTE id)
 
     i==+1
 
-    IF i > 38 OR l > 18 THEN
-      NWrite(RXBUFF,i)
-      i = 0
-      IF l > 18 THEN
-        isMore = 1
+    NWriteSE(RXBUFF)
 
-        NWriteS("[MORE]")
-        NGetB()
-        NSB(0) = 126
-        NSB(1) = 126
-        NSB(2) = 126
-        NSB(3) = 126
-        NSB(4) = 126
-        NSB(5) = 126
-        NWrite(NSB,6)
-        ;NPutC(155)
-        l = 0
-      ELSE
-        NStatus()
+    IF l > 18 THEN
+      isMore = 1
 
-        IF BYTESWAITING > 0 THEN
-          NRead(NSB, 1)
-;          TRIP = 0
-;          PACTL = PACTL % 1
-          IF NSB(0) = 3 THEN
-            NPutC(155)
-           ;PrintE("^C FOUND")
-            EXIT
-          FI
+      NWriteS("[MORE]")
+      NGetB()
+      NSB(0) = 126
+      NSB(1) = 126
+      NSB(2) = 126
+      NSB(3) = 126
+      NSB(4) = 126
+      NSB(5) = 126
+      NWrite(NSB,6)
+      l = 0
+    ELSE
+      NStatus()
+
+      IF BYTESWAITING > 0 THEN
+        NRead(NSB, 1)
+        IF NSB(0) = 3 THEN
+          NPutC(155)
+         ;PrintE("^C FOUND")
+          EXIT
         FI
       FI
     FI
   OD
-  NWrite(RXBUFF,i)
-
 
   Put(')
   FOR i = 0 TO 29
@@ -246,7 +265,7 @@ PROC ViewMsg(BYTE id)
   OD
   Put(')
   PutE()
-  Close(5)
+  FClose(5)
 
   IF UATTR(8) = 0 THEN
     NWriteSE("_______________________________________")

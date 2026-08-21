@@ -1,0 +1,565 @@
+
+MODULE
+
+BYTE IGNORE_CONN_CLOSED=[0]
+BYTE ni=[0],nc=[0],nv=[0]
+BYTE ERRNO=[0],IS_CONN=[1]
+BYTE MODEM=[3],CARRIER=[128]
+BYTE KEYPRESS=$02FC
+BYTE CMCMD=$0007
+BYTE DVSTAT=$02EA
+BYTE DVSTAT_MODEM=$02EB
+BYTE BYTESWAITING=$0400
+BYTE OUTBYTESWAITING=$0401
+BYTE IS_SUSPEND=[0]
+
+BYTE MODEM_OPEN=$0370
+BYTE IS_ATASCII=[1]
+
+BYTE ARRAY RXBUFF(41)
+BYTE ARRAY NSB(41)
+
+BYTE ARRAY RTC(5)
+
+; NOTE: Only NResume, NSuspend, NInit
+;       should change the IS_SUSPEND
+;       flag!
+
+
+PROC NResume()
+
+  IF IS_SUSPEND=0 OR MODEM_OPEN=255 THEN
+    RETURN
+  FI
+
+  CMCMD=1
+  PrintDE(MODEM,"Y")
+  CMCMD=0
+
+  IS_SUSPEND = 0
+RETURN
+
+
+PROC NSuspend()
+  IF IS_SUSPEND=1 OR MODEM_OPEN=255 THEN
+    RETURN
+  FI
+
+  CMCMD=1
+  PrintDE(MODEM,"Y") ; send resume first
+  PrintDE(MODEM,"Z")
+  CMCMD=0
+
+  IS_SUSPEND = 1
+RETURN
+
+
+
+PROC AtaToAsc(BYTE ARRAY s)
+
+  BYTE l=[0]
+
+  FOR l = 1 TO s(0)
+  DO
+    IF s(l) > 127 THEN
+      s(l)==-128
+    FI
+  OD
+RETURN
+
+
+BYTE FUNC NIsFileOpen()
+
+  BYTE isOpen=[0]
+  BYTE iocb0 = $0340
+  BYTE iocb1 = $0350
+  BYTE iocb2 = $0360
+  BYTE iocb3 = $0370
+  BYTE iocb4 = $0380
+  BYTE iocb5 = $0390
+  BYTE iocb6 = $03A0
+  BYTE iocb7 = $03B0
+  isOpen = 0
+
+  PrintF("IOCB 0:%B 1:%B 2:%B 3:%B%E",iocb0,iocb1,iocb2,iocb3)
+  PrintF("IOCB 4:%B 5:%B 6:%B 7:%B%E",iocb4,iocb5,iocb6,iocb7)
+
+  IF iocb5 <> 255 OR iocb6 <> 255 THEN
+    PrintE("IOCB OPEN!")
+    RETURN(1)
+  FI
+
+RETURN(0)
+
+
+
+
+PROC NModemInit()
+
+  ;TODO: Add prompt to set date
+
+
+  PrintE(">>XM301 init start....")
+
+  Close(MODEM)
+  PrintE("Open modem...")
+  Open(MODEM,"T:",12,0)
+
+  PrintE("Set CMCMD=1....")
+  CMCMD = 1
+
+  PrintE("Start init cmds...")
+
+  PrintDE(MODEM,"O") ; tone dial
+;  PrintDE(MODEM,"R") ; sound on
+  PrintDE(MODEM,"S") ;sound off
+
+  ; set translation mode to ASCII and
+
+  ; convert any untranslatable chars
+  ; to A ($41). $9B = 155 EOL
+;  PrintD(MODEM,"A")
+;  PutD(MODEM,$50) ; heavy or....
+;  PutD(MODEM,$40) ; light
+;  PutD(MODEM,$41)
+;  PutD(MODEM,$9B)
+
+
+  PrintD(MODEM,"A")
+  PutD(MODEM,$20) ; no translation
+  PutD(MODEM,$00)
+  PutD(MODEM,$9B)
+
+  CMCMD=0
+
+  PrintE("<<XM301 init end.")
+RETURN
+
+
+
+
+
+
+PROC NRead(BYTE ARRAY buf, BYTE len)
+
+  IF IS_CONN = 0 THEN RETURN FI
+
+  IF len > 40 THEN
+    len = 40
+  FI
+
+  nc = BYTESWAITING
+
+  IF nc > 0 THEN
+    IF nc > len THEN
+      nc = len
+    FI
+
+    FOR ni = 0 TO nc - 1
+    DO
+      buf(ni) = GetD(MODEM)
+;     Put(buf(ni))
+    OD
+;   PutE()
+  FI
+
+RETURN
+
+
+
+
+
+
+
+
+BYTE FUNC NStatus()
+
+  CMCMD=1
+  PrintDE(MODEM,"F")
+  CMCMD=0
+
+  nc = DVSTAT_MODEM & CARRIER
+
+  IF nc = CARRIER THEN
+    IS_CONN = 1
+  ELSE
+    PrintE("CONNECTION DROPPED!!!")
+    IS_CONN = 0
+    RETURN(0)
+  FI
+
+RETURN(DVSTAT_MODEM)
+
+
+
+; for Fuji lib compatibility
+PROC NGetStatus()
+  NStatus() ;update IS_CONN
+
+  PrintF("NGetStatus() ERRNO=%B%E",IS_CONN)
+
+  ERRNO = IS_CONN
+RETURN
+
+
+
+
+PROC NWrite(BYTE ARRAY buff, BYTE len)
+
+  IF IS_CONN = 0 THEN RETURN FI
+
+  len==-1
+
+  IF len > 40 THEN len = 40 FI
+
+  FOR nc = 0 TO len
+  DO
+    PutD(MODEM,buff(nc))
+  OD
+
+RETURN
+
+
+
+PROC NPutC(BYTE b)
+
+  IF IS_CONN = 0 THEN RETURN FI
+
+  PutD(MODEM,b)
+
+RETURN
+
+
+PROC NPutE(BYTE num)
+
+  IF IS_CONN = 0 THEN RETURN FI
+
+  FOR nc = 0 TO num
+  DO
+    PutD(MODEM,155)
+  OD
+
+RETURN
+
+
+PROC NWriteS(BYTE ARRAY s)
+
+  IF IS_CONN = 0 THEN RETURN FI
+
+  IF IS_ATASCII=0 THEN
+    AtaToAsc(s)
+  FI
+
+  PrintD(MODEM,s)
+
+RETURN
+
+
+PROC NWriteSE(BYTE ARRAY s)
+
+  IF IS_CONN = 0 THEN RETURN FI
+
+  IF IS_ATASCII=0 THEN
+    AtaToAsc(s)
+  FI
+
+  PrintDE(MODEM,s)
+
+RETURN
+
+
+
+PROC NCmd(BYTE cmd)
+
+  CMCMD=1
+
+  PrintF("NCmd with cmd=%C%E",cmd)
+
+  IF cmd = 'A THEN
+    IS_CONN = 0
+    BYTESWAITING = 0
+    KEYPRESS = 255
+
+    NModemInit()
+    CMCMD=1
+
+    PrintDE(MODEM,"G") ; auto answer
+
+    PrintE("Waiting for remote data or keypress..")
+
+    DO
+    UNTIL KEYPRESS<>255 OR BYTESWAITING > 0
+    OD
+
+    CMCMD=0
+
+    IF KEYPRESS <> 255 THEN
+      PrintE("WARN>>Keypress interrupt!")
+
+      KEYPRESS=0
+      RETURN
+    FI
+
+    PrintF("CONNECT! BYTESW=%B KP=%B%E",BYTESWAITING,KEYPRESS)
+
+    FOR ni = 0 TO 254
+    DO
+      Print(".")
+    OD
+    PutE()
+    IS_SUSPEND=1
+    IS_CONN = 1
+    NResume()
+
+    IS_ATASCII=1
+    NWriteS("Press ENTER/RETURN for ASCII/ATASCII...")
+    nv=0
+    nc=0
+    WHILE nv=0
+    DO
+      NStatus()
+      IF IS_CONN=0 THEN
+        RETURN
+      FI
+
+      IF BYTESWAITING > 0 THEN
+        NRead(NSB,1)
+        IF NSB(0)=155 OR NSB(0)=13 THEN
+          nc=NSB(0)
+          nv=1
+        FI
+      FI
+    OD
+
+    CMCMD=1
+    IF nc=13 THEN
+
+      IS_ATASCII=0
+
+      PrintE("ASCII CONNECTION")
+      ; set translation mode to ASCII and
+
+      ; convert any untranslatable chars
+      ; to SPACE ($20). $9B = 155 EOL
+      PrintD(MODEM,"A")
+      PutD(MODEM,$50) ; heavy or....
+     ;PutD(MODEM,$40) ; light
+      PutD(MODEM,$20)
+      PutD(MODEM,$9B)
+
+    ELSE
+      IS_ATASCII=1
+
+      PrintE("ATASCII CONNECTION")
+      PrintD(MODEM,"A")
+      PutD(MODEM,$20) ; no translation
+      PutD(MODEM,$00)
+      PutD(MODEM,$9B)
+    FI
+    CMCMD=0
+
+  ELSEIF cmd = 'c THEN
+    Print("Hanging up & IS_CONN=0...")
+
+    ; force resume even if IS_SUPSEND not set
+    CMCMD=1
+    PrintDE(MODEM,"Y")
+    CMCMD=0
+
+    Close(MODEM)
+    IS_CONN = 0
+    IS_SUSPEND = 0
+    PrintE("Done.")
+
+  ELSEIF cmd = 'C THEN
+    PrintE("Shutdown CMD... (NOP)")
+    PutE()
+    PrintE("WARN: Make sure to press SYSTEM RESET")
+    PrintE("to verify SIO/modem are reset!")
+
+  ELSE
+    PrintE("WARN: Not implemented!")
+  FI
+  CMCMD=0
+RETURN
+
+
+
+; Uses the built in jiffy registers
+; to approximate the current date
+; based on what was entered at server
+; start up. - Not accurate!
+PROC NGetDT()
+
+  BYTE j1=$12,j2=$13,j3=$14
+  BYTE m=[0],h=[0],d=[0],ch=[0]
+  BYTE ARRAY t(3)
+
+  m=0
+  h=0
+  d=0
+
+  m = j1 * 18
+  IF m > 59 THEN
+    h = m/60
+    m = m MOD 60
+  FI
+
+  IF h > 23 THEN
+    d = h / 24
+    h = h MOD 24
+  FI
+
+  RTC(4)==+m
+  IF RTC(4) > 59 THEN
+    RTC(3)==+1
+    RTC(4)==-60
+  FI
+
+  RTC(3)==+h
+  IF RTC(3) > 23 THEN
+    RTC(2)==+1
+    RTC(3)=0
+  FI
+
+  RTC(2)==+d
+  IF RTC(2) > 31 THEN
+    RTC(1)==+1
+    RTC(2)=1
+  FI
+
+  IF RTC(1) > 12 THEN
+    RTC(0)==+1
+    RTC(1)=0
+  FI
+
+  FOR ni = 0 TO 5
+  DO
+    NSB(ni) = RTC(ni)
+  OD
+
+  SCopy(RXBUFF,"01/01/2026 00:00 ")
+
+  ch = 0
+  StrB(NSB(1), t)
+  IF NSB(1) < 10 THEN
+   ch = 1
+  FI
+  SAssign(RXBUFF,t,1+ch,2)
+
+  ch=0
+  StrB(NSB(0), t)
+  IF NSB(0) < 10 THEN
+   ch=1
+  FI
+  SAssign(RXBUFF,t,4+ch,5)
+
+  StrB(NSB(2), t)
+  SAssign(RXBUFF,t,9,10)
+
+  ch=0
+  StrB(NSB(3), t)
+  IF NSB(3) < 10 THEN
+    ch=1
+  FI
+  SAssign(RXBUFF,t,12+ch,13)
+
+  ch=0
+  StrB(NSB(4), t)
+  IF NSB(4) < 10 THEN
+    ch=1
+  FI
+
+  SAssign(RXBUFF,t,15+ch,16)
+
+  PrintF("DT=%S%E",RXBUFF)
+  RXBUFF(0)=32 ; first char space
+
+  ;Reset jiffy clock on if an 18
+  ;min tick has happened
+  IF j1 > 0 THEN
+    PrintE("RESETTING JIFFY CLOCK REGISTERS")
+    PrintF("j1=%B j2=%B j3=%B%E",j1,j2,j3)
+    j1=0
+    j2=0
+    j3=0
+  FI
+RETURN
+
+
+;
+;TODO: This should take from connected
+;user input if connected instead of
+;locking to local BBS server input
+;
+PROC NSetDT()
+  BYTE j1=$12,j2=$13,j3=$14
+
+  ;jiffy clock reset
+  j1=0
+  j2=0
+  j3=0
+
+  IF IS_CONN=1 THEN
+    NPutC(155)
+    NWriteSE("WARNING:")
+    NWriteSE("Clock setup prompt triggered on")
+    NWriteSE("server screen...")
+    NPutC(155)
+    NWriteSE("BBS locked until inputs completed!")
+  FI
+
+  PrintE("Clock setup:")
+  Print(" Enter year: ")
+  RTC(2) = InputB()
+
+  Print("Enter month: ")
+  RTC(1) = InputB()
+
+  Print("  Enter day: ")
+  RTC(0) = InputB()
+
+  Print(" Enter hour: ")
+  RTC(3) = InputB()
+
+  Print("  Enter min: ")
+  RTC(4) = InputB()
+
+RETURN
+
+
+
+BYTE FUNC NInit()
+  IS_SUSPEND=0
+  IS_CONN=0
+
+  NSetDt()
+
+RETURN(1)
+
+
+
+
+
+
+
+;Dummy placeholder for NEBBS API
+;module/section entry point as it
+;is not supported on dial up.
+PROC NELatest()
+  NPutC(155)
+  NWriteSE("Dialing NE BBS for latest msgs...")
+  NWriteSE("ATDT16313146554")
+  FOR ni = 0 TO 250
+  DO
+    IF ni MOD 2 = 0 THEN
+      NPutC('.)
+    FI
+  OD
+  NPutE(8)
+  NWriteSE("NO CARRIER")
+  NWriteSE("JK! Not supported on dial up!")
+RETURN
+
+
+

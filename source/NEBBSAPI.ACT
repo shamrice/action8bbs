@@ -148,15 +148,15 @@ PROC NELatest()
 
         IF lines > 16 THEN
           lines = 0
-          NWriteS("[MORE]")
-          NGetB()
-          NSB(0)=126
-          NSB(1)=126
-          NSB(2)=126
-          NSB(3)=126
-          NSB(4)=126
-          NSB(5)=126
-          NWrite(NSB,6)
+;          NWriteS("[MORE]")
+;          NGetB()
+;          NSB(0)=126
+;          NSB(1)=126
+;          NSB(2)=126
+;          NSB(3)=126
+;          NSB(4)=126
+;          NSB(5)=126
+;          NWrite(NSB,6)
         FI
 
       ELSE
@@ -165,10 +165,11 @@ PROC NELatest()
     OD
     NEClose()
 
-    IF c < 10 THEN
+    IF c < 9 THEN
       NWriteS("RETURN for Next or EXit")
 
       v = NGetB()
+      PrintF("NEBBS INPUT=%B : %B%E",v,c)
       IF v = 'x OR v = 'X THEN
         NPutC(155)
         EXIT

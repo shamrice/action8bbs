@@ -10,6 +10,7 @@ PROC PostMsg(BYTE parentId)
   maxI=0
   sOffset=0
   sSect=0
+  maxLine=0
 
   nMsg = HIMSGID + 1
   IF nMsg > 49 THEN
@@ -21,8 +22,7 @@ PROC PostMsg(BYTE parentId)
     parentId = 255
   FI
 
-  Close(5)
-  Open(5,MTEMPNAME,12,0)
+  FOpen(5,MTEMPNAME,12)
 
   Note(5,@sSect,@sOffset)
 
@@ -42,10 +42,12 @@ PROC PostMsg(BYTE parentId)
   OD
   PutD(5,155)
 
-  NPutC(125)
-
   SCopy(RXBUFF, "  TO: ")
   PrintD(5, RXBUFF)
+
+  NResume()
+  NPutC(125)
+
 
   IF parentId = 255 THEN
 
@@ -53,6 +55,7 @@ PROC PostMsg(BYTE parentId)
 
     maxI = GetInp()
 
+    NSuspend()
     IF RXBUFF(0) = 32 THEN
       PrintD(5, "ALL")
       maxI = 2
@@ -64,6 +67,7 @@ PROC PostMsg(BYTE parentId)
         PutD(5, c)
       OD
     FI
+    NResume()
   ELSE
     ; auto fill to field on replies
 
@@ -79,18 +83,24 @@ PROC PostMsg(BYTE parentId)
         EXIT
       FI
     OD
-  ;  Print("PREV FROM: ")
+    Print("PREV FROM: ")
+
+    NSuspend()
     FOR i = 0 TO maxI
     DO
-   ;   Put(PREVFROM(i))
+      Put(PREVFROM(i))
       PutD(5,PREVFROM(i))
     OD
+    NResume()
   FI
 
+  NSuspend()
   PutD(5, 155)
 
   SCopy(RXBUFF, "SUBJ: ")
   PrintD(5,RXBUFF)
+
+  NResume()
 
   IF parentId <> 255 THEN
     NWriteS("Use previous subject [y]? ")
@@ -107,15 +117,18 @@ PROC PostMsg(BYTE parentId)
 
     IF maxI > 29 THEN maxI = 29 FI
 
-  ;  PrintF("SUBJ_MAX_I:%B%E",maxI)
+    PrintF("SUBJ_MAX_I:%B%E",maxI)
     Print("SUBJ:")
 
+    NSuspend()
     FOR i = 0 TO maxI
     DO
-    ;  Put(RXBUFF(i))
+      Put(RXBUFF(i))
       PutD(5, RXBUFF(i))
     OD
     Put(155)
+    NResume()
+
   ELSE
 
     maxI = 0
@@ -126,7 +139,7 @@ PROC PostMsg(BYTE parentId)
       ;Put(PREVSUBJ(i))
       IF PREVSUBJ(i) <> 32 THEN
         maxI = i
-   ;     PrintF("%EPREV_SUBJ_MAX_I:%B%E",maxI)
+         PrintF("%EPREV_SUBJ_MAX_I:%B%E",maxI)
         EXIT
       FI
     OD
@@ -148,98 +161,85 @@ PROC PostMsg(BYTE parentId)
       DO
         PREVSUBJ(i)=RXBUFF(i)
       OD
-    ;ELSE
-    ;  PrintE("PREV SUBJ MATCHES /^RE:.*/")
+     ELSE
+       PrintE("PREV SUBJ MATCHES /^RE:.*/")
 
     FI
 
- ;   Print("FINAL_PREV_SUBJ:")
+    PrintF("MAXI=%B FINAL_PREV_SUBJ:",maxI)
 
+    NSuspend()
     FOR i = 0 TO maxI
     DO
-  ;    Put(PREVSUBJ(i))
+      Put(PREVSUBJ(i))
       PutD(5, PREVSUBJ(i))
     OD
     Put(155)
+    NResume()
   FI
 
+  NSuspend()
   PutD(5,155)
   PutD(5,155)
-  SCopy(RXBUFF,"----+--------+--------+----")
-;  SCopy(RXBUFF, "----+----")
-;  FOR i = 0 TO 2
-;  DO
-    NWriteS(RXBUFF)
-;;    NWriteS(RXBUFF)
-;;    NWriteS(RXBUFF)
-;  OD
-  NWriteSE("----+---")
-
-  maxLine = 0
 
   Note(5,@tSect,@tOffset)
   lSect(maxLine) = tSect
   lOffset(maxLine) = tOffset
+
+
+  NResume()
+  NWriteS("----+--------+--------+----")
+  NWriteSE("----+---")
 
   ALLOW_INVERTED = 1
   ALLOW_WW = 1
 
   WHILE status = 0 AND IS_CONN = 1
   DO
-
-    skip = 0
-;    PrintF("j=%B s=%U o=%B%E",j,lSect(j),lOffset(j))
     maxI = GetInp()
 
-    FOR i = 0 TO 37; maxI
-    DO
-      c = RXBUFF(i)
-      IF i = 0 AND c = '/ THEN
-        skip = 1
-        status = HEditCmd()
-
-        ;not trusting nested EXIT
-        i=37
-      ELSEIF maxLine <= 20 THEN
-        PutD(5, c)
-      FI
-    OD
-
-    IF skip = 0 AND status = 0 AND maxLine > 19 THEN
+    IF RXBUFF(0) = '/ THEN
+      status = HEditCmd()
+    ELSEIF maxLine = 19 THEN
       NWriteSE("Max lines reached!")
-      skip = 1
-    FI
-    IF skip = 0 THEN
-      PutD(5, 155)
+    ELSE
 
-      IF maxLine >= 14 THEN
-        IF (19-maxLine) = 0 THEN
-          NWriteSE("Max lines reached!")
-        ELSE
-          StrB((19-maxLine),nl)
-          NWriteS("WARN> ")
-          NWriteS(nl)
-          NWriteSE(" lines left.")
-        FI
-      FI
       maxLine==+1
 
+      IF maxLine = 19 THEN
+        NWriteSE("Max lines reached!")
+      ELSEIF maxLine >= 14 THEN
+        StrB((19-maxLine),nl)
+        NWriteS("WARN> ")
+        NWriteS(nl)
+        NWriteSE(" lines left.")
+      FI
+
+      NSB(0)=38
+      FOR i = 0 TO 37
+      DO
+        NSB(i+1)=RXBUFF(i)
+      OD
+
+      NSuspend()
+      PrintDE(5,NSB)
       Note(5,@tSect,@tOffset)
+      NResume()
+
       lSect(maxLine) = tSect
       lOffset(maxLine) = tOffset
-
     FI
-
   OD
 
   IF status = 2 THEN
 
+;    NIsFileOpen()
+
     SetMsgCoords(nMsg)
 
-    Close(6)
-    Open(6,MBFNAME,12,0)
-    Point(6,MS,MO)
+    FOpen(6,MBFNAME,12)
 
+    Point(6,MS,MO)
     Point(5,sSect,sOffset)
 
     ; mark parent id as first byte
@@ -267,8 +267,11 @@ PROC PostMsg(BYTE parentId)
     ;don't save final input line
     maxLine==-1
 
+    PrintE("LINE TRIMMING...")
     FOR i = 0 TO maxLine
     DO
+;      PrintF("%ELINE=%B%E",i)
+
       Point(5,lSect(i),lOffset(i))
       maxI = 0
       FOR v = 0 TO 37
@@ -276,7 +279,8 @@ PROC PostMsg(BYTE parentId)
         c = GetD(5)
         RXBUFF(v) = c
 
-        IF c <> 32 THEN
+        IF c <> 32 AND c <> 155 THEN
+ ;         PrintF("[%B %B(%C)] ",v,c,c)
           maxI = v
         FI
       OD
@@ -289,26 +293,30 @@ PROC PostMsg(BYTE parentId)
     OD
     PutD(6,158)
 
-    Close(6)
+    FClose(6)
 
     HIMSGID = nMsg
     NWriteSE("Message posted")
 
-    Open(6,MHFNAME,8,0)
+    FOpen(6,MHFNAME,8)
     PrintBDE(6,HIMSGID)
     PrintBDE(6,MBROLL)
-    Close(6)
+    FClose(6)
 
     UATTR(7)==+1
     IF UATTR(7) = 0 THEN
       UATTR(6)==+1
     FI
     PrintE("New Msg")
+    NSuspend()
   ELSE
+    PrintE("Message canceled")
     NWriteSE("Message canceled")
   FI
 
-  Close(5)
+
+  FClose(5)
+
   GFXMODE = 0
   ALLOW_INVERTED = 0
   ALLOW_WW = 0
@@ -367,9 +375,6 @@ PROC ReadMsgs()
   PrintF("READ:UserHi=%B HiMsg=%B%E",UATTR(5),HIMSGID)
 
   n=UATTR(5)
-;  IF n <> HIMSGID THEN
-;    dir=1
-;  FI
 
   NPutC(125)
 
@@ -416,6 +421,7 @@ PROC ReadMsgs()
       n = HIMSGID
     ELSEIF c = 'R THEN
       PostMsg(n)
+      PrintE("Returned to main loop")
     ELSEIF c = 'P THEN
       PostMsg(255) ;no parent
     ELSEIF c = 'T THEN
@@ -453,4 +459,5 @@ PROC ReadMsgs()
 
   NPutC(155)
 RETURN
+
 

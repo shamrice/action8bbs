@@ -1,13 +1,34 @@
+
+PROC FOpen(BYTE iocb, BYTE ARRAY name, BYTE mode)
+  PrintF("OPEN:%B : %S%E",iocb,name)
+
+  NSuspend()
+  Close(iocb)
+  Open(iocb,name,mode,0)
+RETURN
+
+
+
+PROC FClose(BYTE iocb)
+  PrintF("CLOSE:%B%E",iocb)
+
+  NSuspend()
+  Close(iocb)
+  NResume()
+RETURN
+
+
 PROC AppendFile(BYTE ARRAY file, BYTE ARRAY txt, BYTE len)
 
-  OPEN(FIOCB,file,9,0)
+  PrintF("Appending %S with %S :len%B%E",file,txt,len)
+  FOpen(FIOCB,file,9)
+
   FOR i = 0 TO len
   DO
     PutD(FIOCB,txt(i))
   OD
   PutD(FIOCB,155)
 
-  Close(FIOCB)
-
+  FClose(FIOCB)
 RETURN
 

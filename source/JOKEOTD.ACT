@@ -13,8 +13,7 @@ PROC JokeOTD()
 
   PrintF("view joke=%B%E",v)
 
-  Close(5)
-  Open(5,"D2:JOKES.DAT",4,0)
+  FOpen(5,"D2:JOKES.DAT",4)
 
   i = 0
   DO
@@ -27,14 +26,16 @@ PROC JokeOTD()
     c=(i/2)+1
 
     IF c = v THEN
+      NResume()
       NWriteSE(RXBUFF)
+      NSuspend()
       jFound==+1
       IF jFound = 2 THEN EXIT FI
     FI
 
     i==+1
   OD
-  Close(5)
+  FClose(5)
 
   NPutC(155)
 

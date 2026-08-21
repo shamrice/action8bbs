@@ -24,31 +24,28 @@ PROC Wall()
     RETURN
   FI
 
-  ;add newlines...
-  maxI==+1
-  RXBUFF(maxI) = 155
-  RXBUFF(maxI + 1) = 155
-
-
   NPutC(155)
   NWriteSE("Saving...")
 
-  Close(5)
-  Open(5,"D2:WALL.DAT",9,0)
+  FOpen(5,"D2:WALL.DAT",9)
+
   FOR i = 0 TO 9
   DO
     c = UNAME(i) + 128
     PutD(5,c)
   OD
 
-  PutD(5,155)
-
+  NSB(0) = maxI
   FOR i = 0 TO maxI
   DO
-    PutD(5,RXBUFF(i))
+    NSB(i+1) = RXBUFF(i)
   OD
+
   PutD(5,155)
-  Close(5)
+  PrintDE(5,NSB)
+  PutD(5,155)
+
+  FClose(5)
 
   NWriteSE("Wall entry added!")
   NPutC(155)

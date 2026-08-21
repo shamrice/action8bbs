@@ -38,36 +38,46 @@ BYTE FUNC UCase(BYTE ch)
   FI
 RETURN (ch)
 
+
+
+
 ; Needs to be in UTIL as requires
 ; both TIME and NETWORK...
 ;
-; 2025-10-24: swiched from RXBUFF to
-;             NSB.. may cause issues
 BYTE FUNC NGetB()
   nv = 0
   nc = 0
+
   WHILE nv = 0
   DO
     NStatus()
+    IF IS_CONN = 0 THEN
+      PrintE("NGetB after conn drop!")
+      RETURN(0)
+    FI
+
     IF BYTESWAITING > 0 THEN
       NRead(NSB, 1)
       NGetStatus()
       IF ERRNO <> 1 THEN
         PrintF("Read err: %B%E",ERRNO)
         IS_CONN = 0
-        RETURN(nc)
+        EXIT
       FI
       nc = NSB(0)
-;     TRIP = 0
-;     PACTL = PACTL % 1
-      nv = 1
+      IF (nc >= 32 AND nc <=124) OR nc=155 THEN
+        nv = 1
+      ELSE
+        PrintF("NGetB_IGNORE:%B%C%E",nc,nc)
+      FI
     ELSE
       IF TSessExp() = 1 THEN
-        RETURN(nc)
+        EXIT
       FI
     FI
   OD
 RETURN (nc)
+
 
 
 PROC NPrintFile(BYTE ARRAY file)
@@ -78,11 +88,16 @@ PROC NPrintFile(BYTE ARRAY file)
 
   NPutC(125)
 
-  Close(FIOCB)
-  Open(FIOCB,file,4,0)
+  PrintF("Open and sending: %S%E",file)
 
+  FOpen(FIOCB,file,4)
+
+  WHILE IS_CONN = 1
   DO
+    NSuspend()
     InputSD(FIOCB,RXBUFF)
+    NResume()
+
     NWriteSE(RXBUFF)
 
     IF EOF(FIOCB) <> 0 THEN
@@ -92,7 +107,6 @@ PROC NPrintFile(BYTE ARRAY file)
     l==+1
 
     IF l > 21 THEN
-
       l = 0
 
       IF c <> 'C THEN
@@ -113,6 +127,7 @@ PROC NPrintFile(BYTE ARRAY file)
       NStatus()
 
       IF BYTESWAITING > 0 THEN
+        NResume()
         NRead(NSB, 1)
         IF NSB(0) = 3 THEN
           EXIT
@@ -122,7 +137,7 @@ PROC NPrintFile(BYTE ARRAY file)
     FI
   OD
 
-  Close(FIOCB)
+  FClose(FIOCB)
 
 RETURN
 
@@ -130,13 +145,9 @@ RETURN
 CARD FUNC ReadInp()
   CARD readLen=[0]
 
-; IF TRIP = 0 THEN
-;   RETURN (0)
-; FI
-
   NStatus()
 
-  IF BYTESWAITING = 0 THEN
+  IF BYTESWAITING = 0 OR IS_CONN = 0 THEN
     RETURN (0)
   FI
 
@@ -145,9 +156,6 @@ CARD FUNC ReadInp()
   FI
   readLen = BYTESWAITING
   NRead(NSB,readLen)
-
-; TRIP = 0
-; PACTL = PACTL % 1
 
 RETURN (readLen)
 
@@ -162,11 +170,12 @@ BYTE FUNC GetInp()
   c = 0
   checkC = 0
 
+  NResume()
+
   FOR i = 0 TO 39
   DO
     IF ALLOW_WW = 1 AND i < 10 THEN
       IF WWSB_V = 1 AND WWSB(i) <> 32 THEN
-   ;     PrintF("FROM WWBUFF i=%B char=%C%E",i,WWSB(i))
         RXBUFF(i) = WWSB(i)
         c==+1
       ELSE
@@ -180,7 +189,6 @@ BYTE FUNC GetInp()
   OD
 
   IF ALLOW_WW = 1 AND WWSB_V = 1 THEN
-  ;  PrintF("WW : 0 to %B%E",c)
     NWrite(RXBUFF, c)
   FI
 
@@ -219,7 +227,6 @@ BYTE FUNC GetInp()
           ELSE
             IF NSB(i)=32 THEN
               lastSpace = c
-    ;          PrintF("LASTSPACE=%B%E",lastSpace)
             FI
             RXBUFF(c) = NSB(i)
             IF IMASK > 0 THEN
@@ -258,6 +265,5 @@ BYTE FUNC GetInp()
       FI
     FI
   OD
-
 RETURN(c)
 

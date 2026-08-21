@@ -3,7 +3,7 @@ MODULE
 BYTE maxLine=[0]
 
 PROC EditLine(BYTE l)
-  BYTE viewOffset=[0]
+  BYTE viewOffset=[0],prevWW=[0]
   CARD viewSect=[0]
 
   IF maxLine = 0 THEN
@@ -11,7 +11,7 @@ PROC EditLine(BYTE l)
     RETURN
   FI
 
-  ;PrintF("EDIT: %B max=%B%E",l,maxLine)
+;  PrintF("EDIT: %B max=%B%E",l,maxLine)
 
 
   l==-1 ;conv to 0 based idx
@@ -29,19 +29,56 @@ PROC EditLine(BYTE l)
   viewOffset = lOffset(l) - 1
 
 ;  PrintF("VPOINT(%B): %U %B%E",l,viewSect,viewOffset)
+
+  NSuspend()
   Point(5,viewSect,viewOffset)
 
-  NPutC('-)
-  FOR i = 0 to 38
+  ;first elm is 155, ignore
+  ;not sure how I feel about this..
+  ;should note happen a char earlier?
+  GetD(5)
+
+  RXBUFF(1) = '-
+  FOR i = 2 to 39
   DO
     RXBUFF(i) = GetD(5)
+
+    IF i = 155 THEN
+      RXBUFF(0) = i
+      EXIT
+    FI
   OD
-  NWriteS(RXBUFF)
+
+  NResume()
+
+  NWriteSE(RXBUFF)
   NPutC('+)
 
+  prevWW = ALLOW_WW
+  ALLOW_WW = 0
   GetInp()
+  ALLOW_WW = prevWW ;restore prev WW setting
 
 ;  PrintF("WPOINT(%B): %U %B%E",l,lSect(l),lOffset(l))
+
+  nc = 1
+  FOR i = 0 TO 37
+  DO
+    IF RXBUFF(i) <> 32 THEN
+      nc = 0
+      EXIT
+    FI
+  OD
+
+  NSuspend()
+
+  IF nc = 1 THEN
+    Point(5,lSect(maxLine),lOffset(maxLine))
+    NResume()
+    NWriteSE("Line unchanged")
+    RETURN
+  FI
+
   Point(5,lSect(l),lOffset(l))
 
   FOR i = 0 TO 37
@@ -52,10 +89,11 @@ PROC EditLine(BYTE l)
   PutD(5,155)
 
 ;  PrintF("RETURN TO: %B s=%U o=%B%E",maxLine,lSect(maxLine),lOffset(maxLine))
-
   Point(5,lSect(maxLine),lOffset(maxLine))
+
 ;  PrintF("EDITRETURN s=%U o=%B max=%B%E",lSect(maxLine),lOffset(maxLine),maxLine)
 
+  NResume()
 RETURN
 
 
@@ -70,6 +108,7 @@ PROC ListMsg(BYTE t)
     RETURN
   FI
 
+  NSuspend()
   Point(5,lSect(0),lOffset(0))
 
   l = 1
@@ -95,6 +134,7 @@ PROC ListMsg(BYTE t)
       idx==+1
 
     ELSE
+      NResume()
       IF t = 'n THEN
         StrB(l,ls)
         NWriteS(ls)
@@ -110,6 +150,7 @@ PROC ListMsg(BYTE t)
 
       idx = 0
       l==+1
+      NSuspend()
 ;      PrintF("l=%B max=%B%E",l,maxLine)
     FI
   OD
@@ -117,7 +158,8 @@ PROC ListMsg(BYTE t)
 ;  PrintF("RETURN TO: %B s=%U o=%B ",maxLine,lSect(maxLine),lOffset(maxLine))
 
   Point(5,lSect(maxLine),lOffset(maxLine))
-;  PrintE("SUCCESS")
+
+  NResume()
 RETURN
 
 
@@ -164,7 +206,9 @@ PROC DeleteLines(BYTE l)
 
   FI
 
+  NSuspend()
   Point(5,lSect(maxLine),lOffset(maxLine))
+  NResume()
 RETURN
 
 
@@ -198,7 +242,9 @@ BYTE FUNC HEditCmd()
     NPutC(155)
     IF c = 'y THEN
       NWriteSE(">>Message cleared!")
+      NSuspend()
       Point(5,lSect(0),lOffset(0))
+      NResume()
       maxLine = 0
     FI
 
@@ -215,13 +261,19 @@ BYTE FUNC HEditCmd()
     FI
 
   ELSEIF RXBUFF(1) = 'l OR RXBUFF(1) = 'n THEN
-;    PrintE("BEFORE LIST")
     ListMsg(RXBUFF(1))
-;    PrintE("AFTER LIST")
 
   ELSEIF RXBUFF(1) = 'e THEN
     c = atob(RXBUFF(2),RXBUFF(3))
     EditLine(c)
+
+  ELSEIF RXBUFF(1) = 'w THEN
+    ALLOW_WW = ALLOW_WW ! 1
+    IF ALLOW_WW = 1 THEN
+      NWriteSE("Word wrap enabled")
+    ELSE
+      NWriteSE("Word wrap disabled")
+    FI
 
   ELSEIF RXBUFF(1) = '? THEN
     NWriteSE("EDITOR QUICK HELP")
@@ -234,6 +286,7 @@ BYTE FUNC HEditCmd()
     NWriteSE("/l  - List message")
     NWriteSE("/n  - List msg with line numbers")
     NWriteSE("/s  - Save post")
+    NWriteSE("/w  - Toggle word wrap")
     NWriteSE("EDITOR QUICK HELP")
 
   ELSE

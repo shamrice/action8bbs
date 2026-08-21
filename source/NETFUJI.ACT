@@ -256,3 +256,36 @@ PROC NGetDT()
   RXBUFF(0) = 32
 RETURN
 
+
+; returns 1 on success or error num
+; on failure
+BYTE FUNC NInit()
+  NOpen()
+  NGetStatus()
+  IF ERRNO <> 1 THEN
+    NCmd('C)
+    PrintE("ERROR opening connection!")
+    PrintF("ERROR: %B%E", ERRNO)
+  FI
+RETURN(ERRNO)
+
+
+; NOP dummy methods for modem lib
+; compatibility.
+
+PROC NSuspend()
+RETURN
+
+PROC NResume()
+RETURN
+
+BYTE FUNC NIsFileOpen()
+RETURN(0)
+
+PROC NSetDT()
+RETURN
+
+; END of dummy methods
+
+
+

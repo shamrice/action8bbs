@@ -1,8 +1,9 @@
-; Action!8! BBS
+; Action!8! BBS - XM301 DIAL UP
 ;
 ; Start Date: 2025-07-11
-; Last update: 2026-04-25
-
+; Last update: 2026-07-14
+;
+;
 BYTE RTS = [$60]
 
 ;INCLUDE "D1:SYSBBS.ACT"
@@ -17,8 +18,8 @@ BYTE c=[0],i=[0],v=[0]
 BYTE ARRAY lOffset(25)
 CARD ARRAY lSect(25)
 
-
-INCLUDE "D1:NETWORK.ACT"
+INCLUDE "D1:NETFUJI.ACT"
+;INCLUDE "D1:NETMODEM.ACT"
 INCLUDE "D1:TIME.ACT"
 INCLUDE "D1:FILE.ACT"
 INCLUDE "D1:UTIL.ACT"
@@ -32,11 +33,12 @@ INCLUDE "D1:NEBBSAPI.ACT"
 INCLUDE "D1:SURVEY.ACT"
 INCLUDE "D1:JOKEOTD.ACT"
 
+
 PROC AcceptConn()
   BYTE KB = $02FC
 
-  Close(2)
-  Open(2,"K:",4,0)
+; Close(2)
+; Open(2,"K:",4,0)
 
   PrintE("Waiting. Press # to shutdown")
 
@@ -60,8 +62,13 @@ PROC AcceptConn()
       NStatus()
     ELSE
       IF KB <> $FF THEN
-        c = GetD(2)
-        IF c = '# THEN
+        PrintE("Checking key press")
+        FOpen(2,"K:",4)
+        Print("PRESS 1 TO SHUTDOWN: ")
+        c = InputB()
+        FClose(2)
+        PrintF("Keypress=%B %C%E",c,c)
+        IF c = 1 THEN
           PrintE("WARN! Server shutdown!")
           IS_CONN = 0
           IMASK = '#
@@ -71,7 +78,7 @@ PROC AcceptConn()
     FI
   OD
 
-  Close(2)
+; Close(2)
 RETURN
 
 
@@ -95,14 +102,15 @@ PROC HandleUserConn()
     UATTR(3)==+1
   FI
 
-  NPrintFile("D1:TITLE.ATA")
-  NGetB()
+  NPrintFile("D1:TITLED.ATA")
 
-  IF UATTR(10) = 1 THEN
-    NPrintFile("D1:MAINMENU.ATA")
-  ELSE
-    NPrintFile("D1:MAINMENS.ATA")
-  FI
+  NWriteSE("Press ? for help")
+
+;  IF UATTR(10) = 1 THEN
+;    NPrintFile("D1:MAINMENU.ATA")
+;  ELSE
+;    NPrintFile("D1:MAINMENS.ATA")
+;  FI
 
   c = 0
 
@@ -144,7 +152,7 @@ PROC HandleUserConn()
       SurveyMenu()
 
     ELSEIF c = 'J THEN
-      JokeOTD()
+       JokeOTD()
 
     ELSEIF c = 'I THEN
       NPutC(155)
@@ -155,13 +163,30 @@ PROC HandleUserConn()
 
     ELSEIF c = '? THEN
       IF UATTR(10) = 1 THEN
-        NPrintFile("D1:MAINMENU.ATA")
+        NPrintFile("D1:MAINMEDU.ATA")
       ELSE
-        NPrintFile("D1:MAINMENS.ATA")
+        NPrintFile("D1:MAINMEDS.ATA")
       FI
 
     ELSEIF c = 'N THEN
       NELatest()
+
+    ELSEIF c = 'D THEN
+      NPutC(155)
+      IF UATTR(9) = 255 THEN
+        NWriteS("Set Date/Time [n]? ")
+        c = NGetB()
+        NPutC(155)
+        IF c = 'Y or c = 'y THEN
+          NSetDT()
+          NPutC(155)
+        FI
+      FI
+      NWriteS("Current time: ")
+      NGetDT()
+      RXBUFF(0)=16
+      NWriteSE(RXBUFF)
+      NPutC(155)
 
     ELSEIF c = '# THEN
       IF UATTR(9) = 255 THEN
@@ -180,21 +205,23 @@ RETURN
 PROC Main()
   Put(125)
   PrintE("           ACTION8BBS             ")
+  Print("Closing IOCBs...")
+  Close(1)
+  Close(2)
+  Close(3)
+  Close(4)
   Close(5)
   Close(FIOCB)
-
-  NOpen()
-  NGetStatus()
-  IF ERRNO <> 1 THEN
-    NCmd('C)
-    PrintE("ERROR opening connection!")
-    PrintF("ERROR: %B%E", ERRNO)
-    RETURN
-  FI
+  PrintE("Done")
 
   SetHIMSG()
   IMASK=0
   IS_CONN = 0
+
+  IF NInit() <> 1 THEN
+    PrintE("INIT FAILED!")
+    RETURN
+  FI
 
   DO
     UCLOG = 0
@@ -221,17 +248,19 @@ PROC Main()
       OD
       PutE()
       AppendFile("D2:CALL.LOG",RXBUFF,27)
-
       SaveUAttr()
+      PrintE("User session finished.")
     FI
     PutE()
   OD
 
+  PrintE("Closing IOCB on exit")
   Close(FIOCB)
 
   NCmd('C)
 
   PrintE("Server offline.")
+
 
 RETURN
 

@@ -31,7 +31,9 @@ BYTE FUNC AcctValid(BYTE checkP, BYTE ARRAY p)
     RETURN(0)
   FI
 
-  Open(UCH,UFNAME,4,0)
+  PrintE("Checking Account Valid...")
+
+  FOpen(UCH,UFNAME,4)
 
   DO
     IF EOF(UCH) <> 0 THEN
@@ -53,9 +55,10 @@ BYTE FUNC AcctValid(BYTE checkP, BYTE ARRAY p)
 
   UNTIL v = 1
   OD
-  Close(UCH)
 
-;  PrintF("FINAL: S=%U O=%B%E",USECT,UOFFSET)
+  FClose(UCH)
+
+  PrintF("FINAL: S=%U O=%B%E",USECT,UOFFSET)
 
 RETURN (v)
 
@@ -122,7 +125,7 @@ BYTE FUNC CheckNewUser()
   NGetDt()
 
   ;add attributes entry
-  Open(UCH,UANAME,9,0)
+  FOpen(UCH,UANAME,9)
   PutD(UCH,155)
   Note(UCH,@USECT,@UOFFSET)
 
@@ -139,7 +142,7 @@ BYTE FUNC CheckNewUser()
     PutD(UCH,0)
   OD
 
-  Close(UCH)
+  FClose(UCH)
   PrintF("NewUserAttr: s=%U o=%B%E",USECT,UOFFSET)
 
 
@@ -158,7 +161,7 @@ BYTE FUNC CheckNewUser()
     RXBUFF(i+10) = p(i)
   OD
 
-  Open(UCH,UFNAME,9,0)
+  FOpen(UCH,UFNAME,9)
   FOR i = 0 TO 19
   DO
     PutD(UCH,RXBUFF(i))
@@ -166,7 +169,8 @@ BYTE FUNC CheckNewUser()
   PutD(UCH,155)
   PrintCDE(UCH,USECT)
   PrintBDE(UCH,UOFFSET)
-  Close(UCH)
+
+  FClose(UCH)
 RETURN (1)
 
 
@@ -180,7 +184,7 @@ BYTE FUNC DoLogin()
   c = 0
   new = 0
 
-  NPrintFile("D1:LOGIN.ATA")
+  NPrintFile("D1:LOGIND.ATA")
 
   WHILE try < 3 AND IS_CONN = 1
   DO
