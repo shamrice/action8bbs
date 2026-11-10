@@ -1,0 +1,248 @@
+;
+; Action8 Message Base Copy Utility
+;
+; Created: 2026-11-09
+; Updated: 2026-11-09
+;
+; This utility program is used to
+; copy a message base from one disk
+; to another disk. The destination
+; message base *should* be reset
+; before copying is done.
+;
+; Because of the use of note/point
+; to determine message location in
+; the msg DB file, a regular DOS copy
+; file command CANNOT BE USED! This
+; utility MUST BE USED to copy
+; message bases!!!
+;
+
+BYTE ARRAY srcDatFile(0)="D#:MSGBASE.DAT"
+BYTE ARRAY srcIdxFile(0)="D#:MSGBASE.IDX"
+BYTE ARRAY srcHiFile(0)="D#:MSGHI.DAT"
+BYTE ARRAY destDatFile(0)="D#:MSGBASE.DAT"
+BYTE ARRAY destIdxFile(0)="D#:MSGBASE.IDX"
+BYTE ARRAY destHiFile(0)="D#:MSGHI.DAT"
+BYTE ARRAY destTmpFile(0)="D#:MSGTEMP.DAT"
+
+CARD SRC_SECT=[0],DEST_SECT=[0]
+BYTE SRC_OFF=[0],DEST_OFF=[0]
+
+PROC SetDriveNum(BYTE dNum,BYTE ARRAY fileName)
+  BYTE ARRAY dStr(2)
+
+  StrB(dNum, dStr)
+  SAssign(fileName,dStr,2,2)
+
+  PrintF("=>%S%E",fileName)
+RETURN
+
+
+PROC InitDestMsgBase()
+  BYTE i=[0],o=[0]
+  CARD c=[0],s=[0]
+  i=0
+
+  Print("Create new dest msg base?[0] ")
+  i = InputB()
+
+  IF i = 0 THEN
+    RETURN
+  FI
+
+  PutE()
+  PrintE("++Init message base files:")
+  PrintF(">%S%E",destDatFile)
+  PrintF(">%S%E",destIdxFile)
+  PrintF(">%S%E",destHiFile)
+  PrintF(">%S%E",destTmpFile)
+  PrintF("%E%%This may take some time...%E")
+
+  Close(5)
+  Close(6)
+  Open(5,destDatFile,8,0)
+  Open(6,destIdxFile,8,0)
+
+
+  FOR i = 0 to 49
+  DO
+    PutD(5,30) ; record separator
+
+    Note(5,@s,@o)
+    PrintF("+MSG=%B s=%U o=%B%E",i,s,o)
+
+    PrintCDE(6,s)
+    PrintBDE(6,o)
+
+    PrintDE(5,"        [END OF MESSAGES]")
+    PutD(5,155)
+
+    PutD(5,158) ;rs inverse for end
+
+    FOR c = 0 TO 944
+    DO
+      PUtD(5,32) ;space fill
+    OD
+  OD
+
+  Close(5)
+  Close(6)
+
+  PrintE(">>Setting HIMSG to zero...")
+  Open(5,destHiFile,8,0)
+  PrintBDE(5,0)
+  PrintBDE(5,0)
+  Close(5)
+
+  PrintE(">>Init msg temp file...")
+
+  Open(5,destTmpFile,8,0)
+  FOR i = 0 TO 40
+  DO
+    FOR o = 0 TO 40
+    DO
+      PutD(5,'.)
+    OD
+    PutD(5,155)
+  OD
+  PutD(5,158)
+  PutD(5,155)
+  Close(5)
+
+
+  PrintE("//Dest msg base initialized!")
+
+RETURN
+
+
+
+PROC SetMsgCoords(BYTE id,isSrc, BYTE ARRAY file)
+  BYTE l=[0], o=[0]
+  CARD s=[0]
+  l=0
+  o=0
+  s=0
+
+  Open(6,file,4,0)
+
+  WHILE EOF(6) = 0
+  DO
+    s = InputCD(6)
+    o = InputBD(6)
+
+    IF l = id THEN
+      EXIT
+    FI
+    l==+1
+  OD
+
+  Close(6)
+
+  IF isSrc = 1 THEN
+    SRC_SECT = s
+    SRC_OFF = o
+  ELSE
+    DEST_SECT = s
+    DEST_OFF = o
+  FI
+
+RETURN
+
+
+
+
+PROC CopyMsgBase()
+
+  BYTE i=[0],b=[0]
+  BYTE ARRAY buff(40)
+
+  FOR i = 0 TO 39
+  DO
+    buff(i) = 32
+  OD
+
+  i=0
+  PutE()
+  PrintE("++Start Copying Message Base")
+
+  FOR i = 0 TO 49
+  DO
+    PrintF(">Copying msg #%B%E",i)
+
+    SetMsgCoords(i,1,srcIdxFile)
+    SetMsgCoords(i,0,destIdxFile)
+
+    Open(5,srcDatFile,12,0)
+    Point(5,SRC_SECT,SRC_OFF)
+
+    Open(6,destDatFile,12,0)
+    Point(6,DEST_SECT,DEST_OFF)
+
+    b = GetD(5) ; pId field
+    PutD(6, b)
+
+    WHILE EOF(5) = 0
+    DO
+      InputSD(5,BUFF)
+      PrintDE(6,BUFF)
+
+      IF BUFF(1) = 158 THEN
+        EXIT
+      FI
+    OD
+
+    Close(5)
+    Close(6)
+  OD
+
+  PrintE("//Finished copying messages")
+  PrintE(">Copying MSGHI.DAT...")
+
+  Open(5,srcHiFile,4,0)
+  BUFF(1) = InputBD(5)
+  BUFF(2) = InputBD(5)
+  Close(5)
+
+  Open(6,destHiFile,8,0)
+  PrintBDE(6,BUFF(1))
+  PrintBDE(6,BUFF(2))
+  Close(6)
+
+  PrintE("//Message Base copy complete!")
+
+RETURN
+
+
+
+PROC Main()
+  BYTE i=[0]
+  i=0
+
+  Put(125)
+
+  PrintE("    Action8 Message Base Copier    ")
+
+  PutE()
+  Print("Source mbase drive #")
+  i = InputB()
+  SetDriveNum(i, srcDatFile)
+  SetDriveNum(i, srcIdxFile)
+  SetDriveNum(i, srcHiFile)
+
+  Print("Destination mbase drive #")
+  i = InputB()
+  SetDriveNum(i, destDatFile)
+  SetDriveNum(i, destIdxFile)
+  SetDriveNum(i, destHiFile)
+  SetDriveNum(i, destTmpFile)
+
+  InitDestMsgBase()
+
+  CopyMsgBase()
+
+  PutE()
+  PrintE("Done")
+
+
+RETURN
