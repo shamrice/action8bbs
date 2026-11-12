@@ -1,0 +1,215 @@
+;
+; Action8 User Base Copy Utility
+;
+; Created: 2026-11-12
+; Updated: 2026-11-12
+;
+; This utility will copy the users
+; from an existing user base to a
+; new user base on a different disk.
+;
+; Any USERS.DAT,USERS.ATR,or USERS.LST
+; on the destination disk will be
+; overwritten!
+;
+
+BYTE ARRAY srcUserFile(0)="D#:USERS.DAT"
+BYTE ARRAY srcAttrFile(0)="D#:USERS.ATR"
+BYTE ARRAY srcListFile(0)="D#:USERS.LST"
+BYTE ARRAY destUserFile(0)="D#:USERS.DAT"
+BYTE ARRAY destAttrFile(0)="D#:USERS.ATR"
+BYTE ARRAY destListFile(0)="D#:USERS.LST"
+
+
+CARD SRC_SECT=[0],DEST_SECT=[0]
+BYTE SRC_OFF=[0],DEST_OFF=[0]
+
+
+PROC SetDriveNum(BYTE dNum,BYTE ARRAY fileName)
+  BYTE ARRAY dStr(2)
+
+  StrB(dNum, dStr)
+  SAssign(fileName,dStr,2,2)
+
+  PrintF("=>%S%E",fileName)
+RETURN
+
+
+
+
+PROC CopyUserList()
+  BYTE i=[0]
+  BYTE ARRAY buff(40)
+
+  FOR i = 0 TO 39
+  DO
+    buff(i) = 32
+  OD
+
+  PrintE("//Copying user list file")
+
+  Open(5,srcListFile,4,0)
+  Open(6,destListFile,8,0)
+
+  WHILE EOF(5) = 0
+  DO
+    InputSD(5,buff)
+    PrintF("+Copy:%S%E",buff)
+    PrintDE(6,buff)
+  OD
+  Close(5)
+  Close(6)
+
+  PrintE("//Finished copying user list")
+
+RETURN
+
+
+
+
+PROC CopyUserBase()
+
+  BYTE i=[0],j=[0],uCount=[0],done=[0]
+  BYTE ARRAY buff(40)
+  BYTE ARRAY uRec(40)
+
+  FOR i = 0 TO 39
+  DO
+    buff(i) = 32
+  OD
+
+  i=0
+  j=0
+  uCount=0
+  done=0
+
+  PutE()
+  PrintE("//Start Copying User Base")
+
+  ;create fresh dest user and attr
+  Open(6,destUserFile,8,0)
+  Close(6)
+  Open(6,destAttrFile,8,0)
+  Close(6)
+
+  WHILE done = 0
+  DO
+
+    PrintF("+Copying user# %B%E",uCount)
+
+    Open(5,srcUserFile,4,0)
+
+    ; skip done users
+    IF uCount > 0 THEN
+      FOR i = 0 TO uCount-1
+      DO
+        InputSD(5,uRec)
+        SRC_SECT = InputCD(5)
+        SRC_OFF = InputBD(5)
+        PrintF("-SKIP:%S:%U:%B%E",uRec,SRC_SECT,SRC_OFF)
+      OD
+    FI
+
+    IF EOF(5) <> 0 THEN
+      EXIT
+    FI
+
+    PrintE(">Getting user record...")
+
+    ; get next user
+    InputSD(5,uRec)
+    SRC_SECT = InputCD(5)
+    SRC_OFF = InputBD(5)
+    Close(5)
+
+    ;0,0 means not found.
+    IF SRC_SECT=0 AND SRC_OFF=0 THEN
+      EXIT
+    FI
+
+    PrintF("+ ADD:%S:%U:%B%E",uRec,SRC_SECT,SRC_OFF)
+
+    PrintE(">Getting user attributes...")
+    ; read attributes
+    Open(5,srcAttrFile,12,0)
+    Point(5,SRC_SECT,SRC_OFF)
+
+    FOR i = 0 TO 31
+    DO
+      buff(i) = GetD(5)
+    OD
+    Close(5)
+
+    PrintE(">Copying attributes...")
+
+    Open(6,destAttrFile,9,0)
+    Note(6,@DEST_SECT,@DEST_OFF)
+
+    FOR i = 0 TO 31
+    DO
+      PutD(6,buff(i))
+    OD
+    PutD(6,155)
+    Close(6)
+
+
+    PrintE(">Copying user record...")
+
+    Open(6,destUserFile,9,0)
+    PrintDE(6,uRec)
+    PrintCDE(6,DEST_SECT)
+    PrintBDE(6,DEST_OFF)
+    Close(6)
+
+    uCount==+1
+  OD
+
+  Close(5)
+  Close(6)
+
+  PrintE("//Message Base copy complete!")
+
+RETURN
+
+
+
+PROC Main()
+  BYTE i=[0]
+  i=0
+
+  Close(5)
+  Close(6)
+
+  Put(125)
+
+  PrintE("     Action8  User Base Copier    ")
+
+  PutE()
+  Print("Source user base drive #")
+  i = InputB()
+  SetDriveNum(i, srcUserFile)
+  SetDriveNum(i, srcAttrFile)
+  SetDriveNum(i, srcListFile)
+
+  Print("Destination user base drive #")
+  i = InputB()
+  SetDriveNum(i, destUserFile)
+  SetDriveNum(i, destAttrFile)
+  SetDriveNum(i, destListFile)
+
+  PutE()
+  Print("*Start copy?[0] ")
+  i = InputB()
+
+  IF i = 0 THEN
+    PrintE("Exiting...")
+  ELSE
+
+    CopyUserList()
+    CopyUserBase()
+
+    PutE()
+    PrintE("Done")
+  FI
+
+RETURN
