@@ -2,7 +2,7 @@
 ; Action8 Message Base Copy Utility
 ;
 ; Created: 2026-11-09
-; Updated: 2026-11-09
+; Updated: 2026-11-16
 ;
 ; This utility program is used to
 ; copy a message base from one disk
@@ -40,6 +40,8 @@ RETURN
 
 
 PROC InitDestMsgBase()
+  ;BYTE ARRAY line="                                      "
+  BYTE ARRAY line="....................................."
   BYTE i=[0],o=[0]
   CARD c=[0],s=[0]
   i=0
@@ -75,14 +77,22 @@ PROC InitDestMsgBase()
     PrintCDE(6,s)
     PrintBDE(6,o)
 
-    PrintDE(5,"        [END OF MESSAGES]")
+    ;print place holder header with
+    ;newline and record separator.
+
+    PrintDE(5,"DATE: 01/01/2026 00:00")
+    PrintDE(5,"FROM:            ")
+    PrintDE(5,"  TO:                                ")
+    PrintDE(5,"SUBJ:                                ")
+    PutD(5,155)
+    PutD(5,158)
     PutD(5,155)
 
-    PutD(5,158) ;rs inverse for end
-
-    FOR c = 0 TO 944
+    ; fill msg body data place holder
+    FOR c = 0 TO 18
     DO
-      PUtD(5,32) ;space fill
+      PutD(5,(c+48))
+      PrintDE(5,line)
     OD
   OD
 
