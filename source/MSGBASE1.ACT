@@ -24,6 +24,17 @@ PROC SetHIMSG()
 RETURN
 
 
+
+PROC SaveHIMSG()
+  PrintF("SaveHIMSG : %B : ROLL=%B%E",HIMSGID,MBROLL)
+  FOpen(6,MHFNAME,8)
+  PrintBDE(6,HIMSGID)
+  PrintBDE(6,MBROLL)
+  FClose(6)
+
+RETURN
+
+
 PROC SetMsgCoords(BYTE id)
 
   BYTE l=[0]
@@ -106,10 +117,10 @@ PROC ViewMsg(BYTE id)
   ; keep track of user himsgid
   IF id <= HIMSGID THEN
     IF id > UATTR(5) THEN
-      PrintF("IF New UHIMSG=%B%E",id)
+;      PrintF("IF New UHIMSG=%B%E",id)
       UATTR(5) = id
     ELSEIF id < UATTR(5) AND UATTR(5) > HIMSGID THEN
-      PrintF("ELSEIF New UHIMSG=%B%E",id)
+ ;     PrintF("ELSEIF New UHIMSG=%B%E",id)
       UATTR(5) = id
     FI
   FI
@@ -140,7 +151,7 @@ PROC ViewMsg(BYTE id)
   FI
 
   IF pId > id AND pId <= HIMSGID THEN
-    PrintF("pId %B has been cycled out%E",pId)
+  ;  PrintF("pId %B has been cycled out%E",pId)
     pId = id
   FI
 
@@ -197,7 +208,7 @@ PROC ViewMsg(BYTE id)
     IF isMore=0 AND (l=2 OR l=4) THEN
 
       IF l = 2 THEN
-        Print("PREVFROM:")
+   ;     Print("PREVFROM:")
         FOR pSubjI = 7 TO 37
         DO
 
@@ -205,12 +216,12 @@ PROC ViewMsg(BYTE id)
             pSubjI = 37
           ELSE
             PREVFROM(pSubJI - 7) = RXBUFF(pSubjI)
-            Put(PREVFROM(pSubjI-7))
+     ;       Put(PREVFROM(pSubjI-7))
           FI
         OD
-        PutE()
+     ;   PutE()
       ELSE
-        Print("PREVSUBJ:")
+    ;    Print("PREVSUBJ:")
         FOR pSubjI = 7 TO 37
         DO
 
@@ -218,10 +229,10 @@ PROC ViewMsg(BYTE id)
             pSubjI = 37
           ELSE
             PREVSUBJ(pSubjI - 7) = RXBUFF(pSubjI)
-            Put(PREVSUBJ(pSubjI-7))
+      ;      Put(PREVSUBJ(pSubjI-7))
           FI
         OD
-        PutE()
+      ;  PutE()
       FI
     ELSE
       pSubjI = 0
@@ -258,13 +269,13 @@ PROC ViewMsg(BYTE id)
     FI
   OD
 
-  Put(')
-  FOR i = 0 TO 29
-  DO
-    Put(PREVSUBJ(i))
-  OD
-  Put(')
-  PutE()
+;  Put(')
+;  FOR i = 0 TO 29
+;  DO
+;    Put(PREVSUBJ(i))
+;  OD
+;  Put(')
+;  PutE()
   FClose(5)
 
   IF UATTR(8) = 0 THEN

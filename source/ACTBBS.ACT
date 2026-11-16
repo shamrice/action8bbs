@@ -1,7 +1,7 @@
-; Action!8! BBS - XM301 DIAL UP
+; Action!8! BBS
 ;
 ; Start Date: 2025-07-11
-; Last update: 2026-07-14
+; Last update: 2026-11-16
 ;
 ;
 BYTE RTS = [$60]
@@ -29,7 +29,7 @@ INCLUDE "D1:MSGBASE3.ACT"
 INCLUDE "D1:ACCT1.ACT"
 INCLUDE "D1:ACCTATTR.ACT"
 INCLUDE "D1:WALL.ACT"
-INCLUDE "D1:NEBBSAPI.ACT"
+;INCLUDE "D1:NEBBSAPI.ACT"
 INCLUDE "D1:SURVEY.ACT"
 INCLUDE "D1:JOKEOTD.ACT"
 
@@ -40,7 +40,7 @@ PROC AcceptConn()
 ; Close(2)
 ; Open(2,"K:",4,0)
 
-  PrintE("Waiting. Press # to shutdown")
+  PrintE("Waiting. Press any key to break")
 
   WHILE IS_CONN = 0
   DO
@@ -169,7 +169,7 @@ PROC HandleUserConn()
       FI
 
     ELSEIF c = 'N THEN
-      NELatest()
+;      NELatest()
 
     ELSEIF c = 'D THEN
       NPutC(155)
@@ -247,8 +247,11 @@ PROC Main()
         Put(UNAME(i))
       OD
       PutE()
+
       AppendFile("D2:CALL.LOG",RXBUFF,27)
       SaveUAttr()
+      SaveHIMSG()
+
       PrintE("User session finished.")
     FI
     PutE()

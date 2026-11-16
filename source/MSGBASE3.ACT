@@ -289,14 +289,6 @@ PROC PostMsg(BYTE parentId)
     HIMSGID = nMsg
     NWriteSE("Message posted")
 
-    ; TODO: move to save when
-    ;       user logs off
-
-    FOpen(6,MHFNAME,8)
-    PrintBDE(6,HIMSGID)
-    PrintBDE(6,MBROLL)
-    FClose(6)
-
     UATTR(7)==+1
     IF UATTR(7) = 0 THEN
       UATTR(6)==+1
